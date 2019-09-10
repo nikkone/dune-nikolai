@@ -209,7 +209,7 @@ namespace Actuators
         std::stringstream new_label;
         for (unsigned i = 0; i < m_args.num_bats; i++)
         {
-          new_label << label << " - Battery " << i;
+          new_label << label << " - Battery " << i; // TODO: Se om denne kan gjøres om til + mellom strings
           m_battery_eid[i] = reserveEntity(new_label.str());
           new_label.str(""); // Why is this line here? TO empty string stream?
         }
@@ -351,7 +351,7 @@ namespace Actuators
         ///Voltage (mV)
         uint16_t voltage_mV = combineUint8ToUint16(m_can_bfr[2], m_can_bfr[1]);
         ///Current (mA) TODO: Should this be int32_t? signed in mrcan
-        uint32_t current_mA = 0 | ((uint8_t)m_can_bfr[5] << 16) | combineUint8ToUint16(m_can_bfr[4], m_can_bfr[3]);
+        int32_t current_mA = (int32_t)0 | (m_can_bfr[5] << 16) | (m_can_bfr[4] << 8) | m_can_bfr[3];
         ///Electronic fuse trip current (A*2)
         uint8_t fuse_halfamps = m_can_bfr[6];
         char flags = m_can_bfr[7];
@@ -359,7 +359,7 @@ namespace Actuators
         
         float voltage_V = float(voltage_mV) * 0.001;
         float current_A = float(current_mA) * 0.001;
-        trace("Rail#%d - Voltage %0.3fV; Current: %0.3fA", rail_idx, voltage_V, current_A);
+        trace("Rail#%d - Voltage %0.3fV; Current: %d mA,  Current: %f A,", rail_idx, voltage_V, current_mA, current_A);
         // TODO: Send IMC::
       }
 
@@ -399,6 +399,48 @@ namespace Actuators
         inf("Text message: %s", m_can_bfr);
       }
 
+      void
+      parseMSG_TQ_BATCTL()
+      {
+        uint8_t motor_index = m_can_bfr[0]; // MAY need to be masked, only 4 first bits id, rest reserved
+        uint8_t master_error = m_can_bfr[1];
+        uint8_t error_count = m_can_bfr[2];
+        uint8_t firmware_ver = m_can_bfr[3];
+        trace(DTR("Motor#%d - Master error: %d; Error count %d; Firmware version: %d"),
+              motor_index, master_error, error_count, firmware_ver);
+
+      }
+
+      void
+      parseMSG_OUTPUTS()
+      {
+        uint8_t rail_index = m_can_bfr[0] >> 4; // Shifts away reserved bits
+        uint32_t states = (m_can_bfr[4] << 24) | (m_can_bfr[3] << 16) | (m_can_bfr[2] << 8) | m_can_bfr[1];
+        trace(DTR("Rail#%d - Master error: %08X;"),
+              rail_index, states);
+
+      }
+
+      void
+      parseMSG_UPTIME()
+      {
+        uint32_t uptime_s = (uint32_t)0 | (m_can_bfr[2] << 16) | (m_can_bfr[1] << 8) | m_can_bfr[0];
+        uint8_t last_reset_case = m_can_bfr[3] >> 4; // Shifts away reserved bits
+        trace(DTR("Uptime#%ds; Last reset case: %01X;"),
+              uptime_s, last_reset_case);
+      }
+
+      void
+      parseMSG_ID_V2()
+      {
+        uint16_t company = combineUint8ToUint16(m_can_bfr[1], m_can_bfr[0]);
+        uint16_t product = combineUint8ToUint16(m_can_bfr[3], m_can_bfr[2]);
+        uint16_t serial_number = combineUint8ToUint16(m_can_bfr[5], m_can_bfr[4]);
+        uint16_t firmware_version = combineUint8ToUint16(m_can_bfr[7], m_can_bfr[6]);
+        trace(DTR("Company#%d; Product: %d; Serial number: %d; Firmware: %d;"),
+              company, product, serial_number, firmware_version);
+      }
+
       //! Tries to read a message from CAN bus, if successful, call relevant parser
       void
       readCanMessage() 
@@ -433,7 +475,22 @@ namespace Actuators
             spew(DTR("MSG_TQ_BAT_STATUS received: %08X"), id);
             parseMSG_TQ_BAT_STATUS();
             break;
-          
+          case MSG_TQ_BATCTL:
+            spew(DTR("MSG_TQ_BATCTL received: %08X"), id);
+            parseMSG_TQ_BATCTL();
+            break;
+          case MSG_OUTPUTS:
+            spew(DTR("MSG_OUTPUTS received: %08X"), id);
+            parseMSG_OUTPUTS();
+            break;
+          case MSG_UPTIME:
+            spew(DTR("MSG_UPTIME: %08X"), id);
+            parseMSG_UPTIME();
+            break;
+          case MSG_ID_V2:
+            spew(DTR("MSG_ID_V2: %08X"), id);
+            parseMSG_ID_V2();
+            break;
           case MSG_CAP_AMP:
           case MSG_CAP_WATT:
           
@@ -441,23 +498,23 @@ namespace Actuators
           case MSG_TEMPERATURE:
           case MSG_ID:
           case MSG_BATCELLS:
-          case MSG_OUTPUTS:
+          
           case MSG_OUTPUT_SET:
-          case MSG_UPTIME:
+
           case MSG_BOOTLOADER:
           case MSG_TQ_MOTOR_SET:
           
-          case MSG_TQ_BATCTL:
+          
           case MSG_TQ_MOTOR_STATUS_BITS:
           case MSG_RESET:
           case MSG_WINCH_TELEMETRY:
           case MSG_WINCH_COMMAND:
           case MSG_WINCH_MOVING:
-          case MSG_ID_V2:
-            spew(DTR("Known unimplemented MSG type received: %08X"), id);
+          
+            trace(DTR("Known unimplemented MSG type received: %08X"), id);
             break;
           default:
-            spew(DTR("Unknown MSG received: %08X"), id);
+            inf(DTR("Unknown CAN MSG received: %08X"), id);
         }
       }
 
@@ -499,13 +556,24 @@ namespace Actuators
       void
       onMain(void)
       {
-        sendSetMotorThrottle(200, -200);
+        //sendSetMotorThrottle(0, 0);
+        int send = 1;
         while (!stopping())
         {
           if(m_can) {
-            readCanMessage();
-
-
+            
+            if(send) {
+              int speed[11][2] = {{0,0},{50,0},{0,0},{-50,0},{0,0},{0,50},{0,0},{0,-50},{0,0},{50,50},{0,0}};
+              for(int i = 0;i<11;i++) {
+                for(int j = 0;j<3;j++) {
+                  Delay::wait(0.8);
+                  sendSetMotorThrottle(speed[i][0], speed[i][1]);
+                }
+              }
+              send=0;
+            } else {
+              readCanMessage();
+            }
             // TODO: Periodisk motor write
             /* Test consume
             IMC::PowerChannelControl temp_msg;
@@ -524,6 +592,7 @@ namespace Actuators
             */
           }
           waitForMessages(1.0);
+          // consumeMessages(); Check if this one is needed.
         }
       }
     };

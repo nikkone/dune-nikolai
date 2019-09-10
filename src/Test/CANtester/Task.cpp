@@ -113,6 +113,7 @@ namespace Test
         while (!stopping())
         {
           if(m_can) {
+          	/*
             // Reading with timeout
             if (Poll::poll(*m_can, 3.0)) {
               m_can->readHexString(bfr, sizeof(bfr)); // REMEMBER DELETE
@@ -122,16 +123,19 @@ namespace Test
             }
             // Sending
             if(send) {
-              bfr[0] = 0xC8;
-              bfr[1] = 0x00;
-              bfr[2] = 0xC8;
-              bfr[3] = 0x00;
-              int msg_id = 13;
-              uint32_t id= ADDR_TQIF | (ADDR_SOURCE << 8) | (msg_id << 20);
+            	*/
+              bfr[0] = 0xa5;
+              bfr[1] = 0xa5;
+              bfr[2] = 0xa5;
+              bfr[3] = 0xa5;
+              //int msg_id = 13;
+              uint32_t id= 0x00C0feab;
               m_can->setTXID(id);
               m_can->write(bfr, 4);
-              send=0;
-            }
+              Delay::wait(1);
+
+              //send=0;
+            //}
           }
           waitForMessages(1.0);
         }
