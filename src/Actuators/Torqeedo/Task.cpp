@@ -319,7 +319,7 @@ namespace Actuators
         uint16_t current_raw = combineUint8ToUint16(m_can_bfr[5], m_can_bfr[4]);
         float voltage = float(voltage_raw) * 0.01;
         float current = float(current_raw) * 0.1;
-        trace("Batt#%d - Charge: %d; Voltage %0.2fV; Current: %0.1fA; Temp: %d, Error: %d",
+        trace("MSG_TQ_BAT_STATUS: Batt#%d - Charge: %d; Voltage %0.2fV; Current: %0.1fA; Temp: %d, Error: %d",
               bat_idx, soc, voltage, current, temp, err_code);
 
         IMC::Temperature temp_msg;
@@ -359,7 +359,7 @@ namespace Actuators
         
         float voltage_V = float(voltage_mV) * 0.001;
         float current_A = float(current_mA) * 0.001;
-        trace("Rail#%d - Voltage %0.3fV; Current: %d mA,  Current: %f A,", rail_idx, voltage_V, current_mA, current_A);
+        trace("MSG_RAIL: Rail#%d - Voltage %0.3fV; Current: %d mA,  Current: %f A,", rail_idx, voltage_V, current_mA, current_A);
         // TODO: Send IMC::
       }
 
@@ -378,7 +378,7 @@ namespace Actuators
         float temp = float(temp_raw) * 0.1;
         float rpm = float(rpm_raw) / 7;
 
-        trace("Motor#%d - Power: %dW; Temp %0.1fC; RPM: %0.1f",
+        trace("MSG_TQ_MOTOR_DRIVE: Motor#%d - Power: %dW; Temp %0.1fC; RPM: %0.1f",
               mot_idx, power, temp, rpm);
         
         IMC::Temperature temp_msg;
@@ -396,7 +396,7 @@ namespace Actuators
       void
       parseMSG_TEXT()
       {
-        inf("Text message: %s", m_can_bfr);
+        inf("MSG_TEXT: %s", m_can_bfr);
       }
 
       void
@@ -406,7 +406,7 @@ namespace Actuators
         uint8_t master_error = m_can_bfr[1];
         uint8_t error_count = m_can_bfr[2];
         uint8_t firmware_ver = m_can_bfr[3];
-        trace(DTR("Motor#%d - Master error: %d; Error count %d; Firmware version: %d"),
+        trace(DTR("MSG_TQ_BATCTL: Motor#%u - Master error: %u; Error count %u; Firmware version: %u"),
               motor_index, master_error, error_count, firmware_ver);
 
       }
@@ -416,7 +416,7 @@ namespace Actuators
       {
         uint8_t rail_index = m_can_bfr[0] >> 4; // Shifts away reserved bits
         uint32_t states = (m_can_bfr[4] << 24) | (m_can_bfr[3] << 16) | (m_can_bfr[2] << 8) | m_can_bfr[1];
-        trace(DTR("Rail#%d - Master error: %08X;"),
+        trace(DTR("MSG_OUTPUTS: Rail#%u - Master error: %08X;"),
               rail_index, states);
 
       }
@@ -426,7 +426,7 @@ namespace Actuators
       {
         uint32_t uptime_s = (uint32_t)0 | (m_can_bfr[2] << 16) | (m_can_bfr[1] << 8) | m_can_bfr[0];
         uint8_t last_reset_case = m_can_bfr[3] >> 4; // Shifts away reserved bits
-        trace(DTR("Uptime#%ds; Last reset case: %01X;"),
+        trace(DTR("MSG_UPTIME: Uptime#%ds; Last reset case: %01X;"),
               uptime_s, last_reset_case);
       }
 
@@ -437,10 +437,19 @@ namespace Actuators
         uint16_t product = combineUint8ToUint16(m_can_bfr[3], m_can_bfr[2]);
         uint16_t serial_number = combineUint8ToUint16(m_can_bfr[5], m_can_bfr[4]);
         uint16_t firmware_version = combineUint8ToUint16(m_can_bfr[7], m_can_bfr[6]);
-        trace(DTR("Company#%d; Product: %d; Serial number: %d; Firmware: %d;"),
+        trace(DTR("MSG_ID_V2: Company#%d; Product: %d; Serial number: %d; Firmware: %d;"),
               company, product, serial_number, firmware_version);
       }
 
+      void
+      parseMSG_TQ_MOTOR_STATUS_BITS()
+      {
+        uint8_t motor_index = m_can_bfr[0] >> 4; // Shifts away reserved bits
+        uint16_t errors = combineUint8ToUint16(m_can_bfr[2], m_can_bfr[1]);
+        uint8_t status = m_can_bfr[3];
+        trace(DTR("MSG_TQ_MOTOR_STATUS_BITS: Motor#%u - Errors: %u; Status %u"),
+              motor_index, errors, status);
+      }
       //! Tries to read a message from CAN bus, if successful, call relevant parser
       void
       readCanMessage() 
@@ -460,52 +469,41 @@ namespace Actuators
         // Parse message
         switch(msg_id) {
           case MSG_TEXT:
-            spew(DTR("MSG_TEXT received: %08X"), id);
             parseMSG_TEXT();
             break;
           case MSG_RAIL:
-            spew(DTR("MSG_RAIL received: %08X"), id);
             parseMSG_RAIL();
             break;
           case MSG_TQ_MOTOR_DRIVE:
-            spew(DTR("MSG_TQ_MOTOR_DRIVE received: %08X"), id);
             parseMSG_TQ_MOTOR_DRIVE();
             break;
           case MSG_TQ_BAT_STATUS:
-            spew(DTR("MSG_TQ_BAT_STATUS received: %08X"), id);
             parseMSG_TQ_BAT_STATUS();
             break;
           case MSG_TQ_BATCTL:
-            spew(DTR("MSG_TQ_BATCTL received: %08X"), id);
             parseMSG_TQ_BATCTL();
             break;
           case MSG_OUTPUTS:
-            spew(DTR("MSG_OUTPUTS received: %08X"), id);
             parseMSG_OUTPUTS();
             break;
           case MSG_UPTIME:
-            spew(DTR("MSG_UPTIME: %08X"), id);
             parseMSG_UPTIME();
             break;
           case MSG_ID_V2:
-            spew(DTR("MSG_ID_V2: %08X"), id);
             parseMSG_ID_V2();
+            break;
+          case MSG_TQ_MOTOR_STATUS_BITS:
+            parseMSG_TQ_MOTOR_STATUS_BITS();
             break;
           case MSG_CAP_AMP:
           case MSG_CAP_WATT:
-          
           case MSG_HOUSEKEEPING:
           case MSG_TEMPERATURE:
           case MSG_ID:
           case MSG_BATCELLS:
-          
           case MSG_OUTPUT_SET:
-
           case MSG_BOOTLOADER:
           case MSG_TQ_MOTOR_SET:
-          
-          
-          case MSG_TQ_MOTOR_STATUS_BITS:
           case MSG_RESET:
           case MSG_WINCH_TELEMETRY:
           case MSG_WINCH_COMMAND:
