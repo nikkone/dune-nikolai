@@ -109,6 +109,10 @@ namespace Actuators
       std::string pwr_names[c_pwrs_count];
       //! Initial power channels states.
       unsigned pwr_states[c_pwrs_count];
+      //! How often the task runs
+      float frequency;
+      //! Write to motor every motor_write_divider times task is run
+      unsigned int motor_write_divider;
     };
     //! Power Channel data structure.
     struct PowerChannel
@@ -117,8 +121,11 @@ namespace Actuators
       torqeedo_power_channels_t channel;
       IMC::PowerChannelState::StateEnum state;
     };
-    struct Task: public DUNE::Tasks::Task
+    struct Task: public DUNE::Tasks::Periodic
     {
+
+      //! Most recent throttle values.
+      unsigned int motor_send_counter;
       // Datatype for storing power lines and states
       typedef std::map<std::string, PowerChannel> PowerChannelMap;
       //! Power channels by name.
@@ -139,7 +146,8 @@ namespace Actuators
       //! @param[in] name task name.
       //! @param[in] ctx context.
       Task(const std::string& name, Tasks::Context& ctx):
-        DUNE::Tasks::Task(name, ctx),
+        DUNE::Tasks::Periodic(name, ctx),
+        motor_send_counter(0),
         motor0_throttle(0),
         motor1_throttle(0),
         m_can(NULL)
@@ -151,6 +159,14 @@ namespace Actuators
         param("Batteries", m_args.num_bats)
         .defaultValue("2")
         .description("Number of batteries connected to the Torqeedo board.");
+
+        param("Frequency", m_args.frequency)
+        .defaultValue("20")
+        .description("How often the task is run in Hz");
+
+        param("Motor write divider", m_args.motor_write_divider)
+        .defaultValue("20")
+        .description("Write to motor every motor_write_divider times task is run");
 
         char power_channel_pcb_labels[c_pwrs_count][8] = {"H_MOT0\0","H_MOT1\0","H_AUX0\0","H_AUX1\0","H_12V0\0","H_12V1\0","H_12V2\0","H_VR0\0","H_VR1\0","H_5V\0"};
         for (unsigned i= 0; i < c_pwrs_count; i++)
@@ -172,6 +188,9 @@ namespace Actuators
       onUpdateParameters(void)
       {
         spew(DTR("Update parameters"));
+
+        setFrequency(m_args.frequency);
+
         if(m_pwr_chs.size() != 0) {
           m_pwr_chs.clear();
         }
@@ -359,7 +378,7 @@ namespace Actuators
         
         float voltage_V = float(voltage_mV) * 0.001;
         float current_A = float(current_mA) * 0.001;
-        trace("MSG_RAIL: Rail#%d - Voltage %0.3fV; Current: %d mA,  Current: %f A,", rail_idx, voltage_V, current_mA, current_A);
+        trace("MSG_RAIL: Rail#%d - Voltage %0.3fV; Current: %d mA,  Current: %f A, fuse_halfamps: %u, flags: %02X", rail_idx, voltage_V, current_mA, current_A, fuse_halfamps, flags);
         // TODO: Send IMC::
       }
 
@@ -456,7 +475,7 @@ namespace Actuators
       {
         // Read message
         uint32_t id;
-        if (Poll::poll(*m_can, 3.0)) { // TODO: Endre timeout til noe lavere
+        if (Poll::poll(*m_can, 0.01)) { // TODO: Endre timeout til noe lavere
           m_can->readString(m_can_bfr, sizeof(m_can_bfr));
           id = m_can->getRXID();
         } else {
@@ -552,46 +571,54 @@ namespace Actuators
 
       //! Main loop.
       void
-      onMain(void)
+      task(void)
       {
-        //sendSetMotorThrottle(0, 0);
-        int send = 1;
-        while (!stopping())
-        {
-          if(m_can) {
-            
-            if(send) {
-              int speed[11][2] = {{0,0},{50,0},{0,0},{-50,0},{0,0},{0,50},{0,0},{0,-50},{0,0},{50,50},{0,0}};
-              for(int i = 0;i<11;i++) {
-                for(int j = 0;j<3;j++) {
-                  Delay::wait(0.8);
-                  sendSetMotorThrottle(speed[i][0], speed[i][1]);
-                }
-              }
-              send=0;
-            } else {
-              readCanMessage();
-            }
-            // TODO: Periodisk motor write
-            /* Test consume
-            IMC::PowerChannelControl temp_msg;
-            temp_msg.name = "Portmotor";
-            temp_msg.op = IMC::PowerChannelControl::PCC_OP_TURN_ON;
-            //dispatch(temp_msg);
-            consume(&temp_msg);
-            */
-
-            /* Test consume
-            IMC::SetThrusterActuation ta;
-            ta.id = 0;
-            ta.value = 1;
-            consume(&ta);
-            sendSetMotorThrottle(motor0_throttle, motor1_throttle);
-            */
-          }
-          waitForMessages(1.0);
-          // consumeMessages(); Check if this one is needed.
+        waitForMessages(0.01); // Parametriser?
+        motor_send_counter++;
+        if(motor_send_counter == m_args.motor_write_divider) {
+          inf(DTR("Motor send"));
+          sendSetMotorThrottle(motor0_throttle, motor1_throttle);
+          motor_send_counter = 0;
+        } else {
+          readCanMessage();
         }
+        
+        /* Motor test
+        if(m_can) {
+          int send = 1;
+          if(send) {
+            int speed[11][2] = {{0,0},{50,0},{0,0},{-50,0},{0,0},{0,50},{0,0},{0,-50},{0,0},{50,50},{0,0}};
+            for(int i = 0;i<11;i++) {
+              for(int j = 0;j<3;j++) {
+                Delay::wait(0.8);
+                sendSetMotorThrottle(speed[i][0], speed[i][1]);
+              }
+            }
+            send=0;
+          } else {
+            readCanMessage();
+          }
+          */
+
+          // TODO: Periodisk motor write
+          /* Test consume
+          IMC::PowerChannelControl temp_msg;
+          temp_msg.name = "Portmotor";
+          temp_msg.op = IMC::PowerChannelControl::PCC_OP_TURN_ON;
+          //dispatch(temp_msg);
+          consume(&temp_msg);
+          */
+
+          /* //Test consume
+          IMC::SetThrusterActuation ta;
+          ta.id = 0;
+          ta.value = 1;
+          dispatch(ta);
+          //consume(&ta);
+          //sendSetMotorThrottle(motor0_throttle, motor1_throttle);
+          */
+        //waitForMessages(0.01);
+        //consumeMessages(); //Check if this one is needed.
       }
     };
   }
