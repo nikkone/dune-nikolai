@@ -53,6 +53,7 @@ namespace Safety
       Hardware::GPIO* m_gpio_activation_pin;
       Hardware::GPIO* m_gpio_heartbeat_pin;
       Hardware::GPIO* m_gpio_watchdog_timeout_pin;
+      Hardware::GPIO* m_gpio_watchdog_timeout_answer_pin;
       Arguments m_args;
       //! Constructor.
       //! @param[in] name task name.
@@ -61,7 +62,8 @@ namespace Safety
         DUNE::Tasks::Periodic(name, ctx),
         m_gpio_activation_pin(NULL),
         m_gpio_heartbeat_pin(NULL),
-        m_gpio_watchdog_timeout_pin(NULL)
+        m_gpio_watchdog_timeout_pin(NULL),
+        m_gpio_watchdog_timeout_answer_pin(NULL)
       {
         param("Frequency", m_args.frequency)
         .description("How often GPIO5 is toggled")
@@ -98,6 +100,7 @@ namespace Safety
         m_gpio_heartbeat_pin = new Hardware::GPIO(5);
         m_gpio_activation_pin = new Hardware::GPIO(6);
         m_gpio_watchdog_timeout_pin = new Hardware::GPIO(12);
+        m_gpio_watchdog_timeout_answer_pin = new Hardware::GPIO(16);
         setEntityState(IMC::EntityState::ESTA_NORMAL, Status::CODE_ACTIVE);
       }
 
@@ -108,8 +111,11 @@ namespace Safety
         m_gpio_heartbeat_pin->setDirection(Hardware::GPIO::GPIO_DIR_OUTPUT);
         m_gpio_activation_pin->setDirection(Hardware::GPIO::GPIO_DIR_OUTPUT);
         m_gpio_watchdog_timeout_pin->setDirection(Hardware::GPIO::GPIO_DIR_INPUT);
+        m_gpio_watchdog_timeout_answer_pin->setDirection(Hardware::GPIO::GPIO_DIR_OUTPUT);
+
         m_gpio_heartbeat_pin->setValue(0);
         m_gpio_activation_pin->setValue(1);
+        m_gpio_watchdog_timeout_answer_pin->setValue(0);
       }
 
       //! Release resources.
@@ -125,14 +131,14 @@ namespace Safety
       void
       task(void)
       {
-        bool m_value = m_gpio_watchdog_timeout_pin->getValue();
-        spew("m_gpio_watchdog_timeout_pin %d", (int) m_value);
-        /*
+        if(m_gpio_watchdog_timeout_pin->getValue()) {
+          err(DTR("StratoPIWatchdog timeout"));
+        }
+
         debug(DTR("Toggled heartbeat gpio"));
         m_gpio_heartbeat_pin->setValue(1);
         Delay::wait(m_args.toggled_time);
         m_gpio_heartbeat_pin->setValue(0);
-        */
       }
     };
   }
