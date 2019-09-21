@@ -96,6 +96,9 @@ namespace Sensors
       void
       onResourceInitialization(void)
       {
+        std::string cmdText = "$JBAUD,19200\r\n";
+        m_uart->writeString(cmdText.c_str());
+        Memory::clear(m_uart);
       }
 
       //! Release resources.
@@ -109,13 +112,12 @@ namespace Sensors
       void
       onMain(void)
       {
-        std::string cmdText = "$JBAUD,19200\r\n";
-        m_uart->writeString(cmdText.c_str());
-        Memory::clear(m_uart);
+        inf(DTR("Start"));
         while (!stopping())
         {
           waitForMessages(1.0);
         }
+        
       }
     };
   }

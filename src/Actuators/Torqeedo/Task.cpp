@@ -291,7 +291,7 @@ namespace Actuators
           motor1_throttle = int16_t(1000 * msg->value);
           break;
         }
-        sendSetMotorThrottle(motor0_throttle, motor1_throttle); // TODO: Kan kanskje tas bort når den kjører periodisk i main
+        //sendSetMotorThrottle(motor0_throttle, motor1_throttle); // TODO: Kan kanskje tas bort når den kjører periodisk i main
       }
 
       //! Consume owerChannelControl messages, forward them to CAN bus
@@ -475,11 +475,10 @@ namespace Actuators
       {
         // Read message
         uint32_t id;
-        if (Poll::poll(*m_can, 0.01)) { // TODO: Endre timeout til noe lavere
+        if (Poll::poll(*m_can, 0.01)) {
           m_can->readString(m_can_bfr, sizeof(m_can_bfr));
           id = m_can->getRXID();
         } else {
-          spew(DTR("Read of CANbus timed out"));
           return;
         }
         
@@ -576,7 +575,7 @@ namespace Actuators
         waitForMessages(0.01); // Parametriser?
         motor_send_counter++;
         if(motor_send_counter == m_args.motor_write_divider) {
-          inf(DTR("Motor send"));
+          spew(DTR("Motor send: %d, %d"), motor0_throttle, motor1_throttle);
           sendSetMotorThrottle(motor0_throttle, motor1_throttle);
           motor_send_counter = 0;
         } else {
