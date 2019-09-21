@@ -113,9 +113,9 @@ namespace Test
         while (!stopping())
         {
           if(m_can) {
-          	/*
+          	m_can->flush();
             // Reading with timeout
-            if (Poll::poll(*m_can, 3.0)) {
+            if (Poll::poll(*m_can, 1.0)) {
               m_can->readHexString(bfr, sizeof(bfr)); // REMEMBER DELETE
               inf(DTR("MSG received: %s"), bfr);
             } else {
@@ -123,7 +123,7 @@ namespace Test
             }
             // Sending
             if(send) {
-            	*/
+            	
               bfr[0] = 0xa5;
               bfr[1] = 0xa5;
               bfr[2] = 0xa5;
@@ -134,8 +134,8 @@ namespace Test
               m_can->write(bfr, 4);
               Delay::wait(1);
 
-              //send=0;
-            //}
+              send=0;
+            }
           }
           waitForMessages(1.0);
         }

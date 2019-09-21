@@ -109,8 +109,6 @@ namespace Actuators
       std::string pwr_names[c_pwrs_count];
       //! Initial power channels states.
       unsigned pwr_states[c_pwrs_count];
-      //! How often the task runs
-      float frequency;
       //! Write to motor every motor_write_divider times task is run
       unsigned int motor_write_divider;
     };
@@ -123,7 +121,7 @@ namespace Actuators
     };
     struct Task: public DUNE::Tasks::Periodic
     {
-
+      bool m_unsent_power_parameters;
       //! Most recent throttle values.
       unsigned int motor_send_counter;
       // Datatype for storing power lines and states
@@ -147,6 +145,7 @@ namespace Actuators
       //! @param[in] ctx context.
       Task(const std::string& name, Tasks::Context& ctx):
         DUNE::Tasks::Periodic(name, ctx),
+        m_unsent_power_parameters(false),
         motor_send_counter(0),
         motor0_throttle(0),
         motor1_throttle(0),
@@ -159,10 +158,6 @@ namespace Actuators
         param("Batteries", m_args.num_bats)
         .defaultValue("2")
         .description("Number of batteries connected to the Torqeedo board.");
-
-        param("Frequency", m_args.frequency)
-        .defaultValue("20")
-        .description("How often the task is run in Hz");
 
         param("Motor write divider", m_args.motor_write_divider)
         .defaultValue("20")
@@ -187,12 +182,10 @@ namespace Actuators
       void
       onUpdateParameters(void)
       {
-        spew(DTR("Update parameters"));
-
-        setFrequency(m_args.frequency);
-
+        inf(DTR("Update parameters"));
         if(m_pwr_chs.size() != 0) {
           m_pwr_chs.clear();
+          m_unsent_power_parameters = true;
         }
         // Set up powerchannels
         PowerChannel pcs[c_pwrs_count];
@@ -254,16 +247,20 @@ namespace Actuators
         }
       }
 
+      void sendPowerChannelMessages() {
+        for (PowerChannelMap::iterator itr = m_pwr_chs.begin(); itr != m_pwr_chs.end(); ++itr)
+        {
+          sendSetPower(itr->second);
+        }
+      }
+
       //! Initialize resources.
       void
       onResourceInitialization(void)
       {
         spew(DTR("Init resurces"));
+        sendPowerChannelMessages();
 
-        for (PowerChannelMap::iterator itr = m_pwr_chs.begin(); itr != m_pwr_chs.end(); ++itr)
-        {
-          sendSetPower(itr->second);
-        }
       }
 
       //! Release resources.
@@ -574,50 +571,17 @@ namespace Actuators
       {
         waitForMessages(0.01); // Parametriser?
         motor_send_counter++;
-        if(motor_send_counter == m_args.motor_write_divider) {
+        if(motor_send_counter >= m_args.motor_write_divider) {
           spew(DTR("Motor send: %d, %d"), motor0_throttle, motor1_throttle);
           sendSetMotorThrottle(motor0_throttle, motor1_throttle);
           motor_send_counter = 0;
         } else {
           readCanMessage();
         }
-        
-        /* Motor test
-        if(m_can) {
-          int send = 1;
-          if(send) {
-            int speed[11][2] = {{0,0},{50,0},{0,0},{-50,0},{0,0},{0,50},{0,0},{0,-50},{0,0},{50,50},{0,0}};
-            for(int i = 0;i<11;i++) {
-              for(int j = 0;j<3;j++) {
-                Delay::wait(0.8);
-                sendSetMotorThrottle(speed[i][0], speed[i][1]);
-              }
-            }
-            send=0;
-          } else {
-            readCanMessage();
-          }
-          */
-
-          // TODO: Periodisk motor write
-          /* Test consume
-          IMC::PowerChannelControl temp_msg;
-          temp_msg.name = "Portmotor";
-          temp_msg.op = IMC::PowerChannelControl::PCC_OP_TURN_ON;
-          //dispatch(temp_msg);
-          consume(&temp_msg);
-          */
-
-          /* //Test consume
-          IMC::SetThrusterActuation ta;
-          ta.id = 0;
-          ta.value = 1;
-          dispatch(ta);
-          //consume(&ta);
-          //sendSetMotorThrottle(motor0_throttle, motor1_throttle);
-          */
-        //waitForMessages(0.01);
-        //consumeMessages(); //Check if this one is needed.
+        if(m_unsent_power_parameters) {
+          sendPowerChannelMessages();
+          m_unsent_power_parameters = false;
+        }
       }
     };
   }

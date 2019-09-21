@@ -44,7 +44,6 @@ namespace Safety
     struct Arguments
     {
       //! Toggle
-      float frequency;
       float toggled_time;
     };
 
@@ -65,20 +64,18 @@ namespace Safety
         m_gpio_watchdog_timeout_pin(NULL),
         m_gpio_watchdog_timeout_answer_pin(NULL)
       {
-        param("Frequency", m_args.frequency)
-        .description("How often GPIO5 is toggled")
-        .defaultValue("0.05");
 
         param("TimeToggled", m_args.toggled_time)
+        .units(Units::Second)
         .description("How long GPIO5 stays toggled")
         .defaultValue("1.00");
+        
       }
 
       //! Update internal state with new parameter values.
       void
       onUpdateParameters(void)
       {
-        setFrequency(m_args.frequency);
       }
 
       //! Reserve entity identifiers.
@@ -133,6 +130,7 @@ namespace Safety
       {
         if(m_gpio_watchdog_timeout_pin->getValue()) {
           err(DTR("StratoPIWatchdog timeout"));
+          setEntityState(IMC::EntityState::ESTA_FAILURE, "StratoPIWatchdog timeout");
         }
 
         debug(DTR("Toggled heartbeat gpio"));

@@ -16,6 +16,8 @@
 #include <net/if.h>
 #include <sys/ioctl.h>
 
+#include <termios.h>
+
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -172,15 +174,21 @@ namespace DUNE
 
     //! Flush input buffer, discarding all of it's contents.
     void
-    SocketCAN::doFlushInput(void) {}
+    SocketCAN::doFlushInput(void) {
+        tcflush(m_can_socket, TCIFLUSH); //Probably does not work, untested
+    }
 
     //! Flush output buffer, aborting output.
     void
-    SocketCAN::doFlushOutput(void) {}
+    SocketCAN::doFlushOutput(void) {
+        tcflush(m_can_socket, TCOFLUSH); //Probably does not work, untested
+    }
 
     //! Flush both input and output buffers.
     void
-    SocketCAN::doFlush(void) {}
+    SocketCAN::doFlush(void) {
+        tcflush(m_can_socket, TCIOFLUSH); //Probably does not work, untested
+    }
 #else
     throw Error("unimplemented feature", "DUNE::Hardware::SocketCAN");
 #endif
