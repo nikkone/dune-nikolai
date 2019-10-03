@@ -291,7 +291,7 @@ namespace Actuators
         //sendSetMotorThrottle(motor0_throttle, motor1_throttle); // TODO: Kan kanskje tas bort når den kjører periodisk i main
       }
 
-      //! Consume owerChannelControl messages, forward them to CAN bus
+      //! Consume PowerChannelControl messages, forward them to CAN bus
       void
       consume(const IMC::PowerChannelControl* msg)
       {
@@ -309,16 +309,16 @@ namespace Actuators
         sendSetPower(m_pwr_chs[msg->name]);
       }
 
-      //! Convenience/readability function for combinint uint8_t to uint16_t
+      //! Convenience/readability function for combining uint8_t to uint16_t
       uint16_t
-      combineUint8ToUint16(uint8_t most_significant, uint8_t least_significant) 
+      combineUint8ToUint16(uint8_t most_significant, uint8_t least_significant) // TODO: Change to char inputs
       {
         return (uint16_t)(most_significant << 8) | least_significant;
       }
 
-      //! Convenience/readability function for combinint int8_t to int16_t
+      //! Convenience/readability function for combining char to int16_t
       int16_t 
-      combineInt8ToInt16(int8_t most_significant, int8_t least_significant) 
+      combinecharToInt16(char most_significant, char least_significant) 
       {
         return (int16_t)(most_significant << 8) | least_significant;
       }
@@ -333,14 +333,14 @@ namespace Actuators
         uint8_t err_code = m_can_bfr[7];
         uint16_t voltage_raw = combineUint8ToUint16(m_can_bfr[3], m_can_bfr[2]);
         uint16_t current_raw = combineUint8ToUint16(m_can_bfr[5], m_can_bfr[4]);
-        float voltage = float(voltage_raw) * 0.01;
-        float current = float(current_raw) * 0.1;
+        fp32_t voltage = fp32_t(voltage_raw) * 0.01;
+        fp32_t current = fp32_t(current_raw) * 0.1;
         trace("MSG_TQ_BAT_STATUS: Batt#%d - Charge: %d; Voltage %0.2fV; Current: %0.1fA; Temp: %d, Error: %d",
               bat_idx, soc, voltage, current, temp, err_code);
 
         IMC::Temperature temp_msg;
         temp_msg.setSourceEntity(m_battery_eid[bat_idx]);
-        temp_msg.value = (float) temp;
+        temp_msg.value = fp32_t(temp);
         dispatch(temp_msg);
         
         IMC::Voltage voltage_msg;
@@ -355,7 +355,7 @@ namespace Actuators
         
         IMC::FuelLevel level_msg;
         level_msg.setSourceEntity(m_battery_eid[bat_idx]);
-        level_msg.value = float(soc);
+        level_msg.value = fp32_t(soc);
         dispatch(level_msg);
       }
 
@@ -387,14 +387,14 @@ namespace Actuators
         /// Power in whole watts
         uint16_t power = combineUint8ToUint16(m_can_bfr[2], m_can_bfr[1]);
         /// PCB temperature in tenths of degrees celsius
-        int16_t temp_raw = combineInt8ToInt16(m_can_bfr[4], m_can_bfr[3]);
+        int16_t temp_raw = combinecharToInt16(m_can_bfr[4], m_can_bfr[3]);
         /// Divide by 7 (gear ratio) to get propeller RPM
         uint16_t rpm_raw = combineUint8ToUint16(m_can_bfr[6], m_can_bfr[5]);
         
-        float temp = float(temp_raw) * 0.1;
-        float rpm = float(rpm_raw) / 7;
+        fp32_t temp = fp32_t(temp_raw) * 0.1;
+        uint16_t rpm = rpm_raw / 7; // Rounds down to nearest whole number
 
-        trace("MSG_TQ_MOTOR_DRIVE: Motor#%d - Power: %dW; Temp %0.1fC; RPM: %0.1f",
+        trace("MSG_TQ_MOTOR_DRIVE: Motor#%d - Power: %dW; Temp %0.1fC; RPM: %d",
               mot_idx, power, temp, rpm);
         
         IMC::Temperature temp_msg;
@@ -404,7 +404,7 @@ namespace Actuators
         
         IMC::Rpm rpm_msg;
         rpm_msg.setSourceEntity(m_motor_eid[mot_idx]);
-        rpm_msg.value = int16_t(rpm);
+        rpm_msg.value = (int16_t)rpm;
         dispatch(rpm_msg);
       }
 
@@ -418,7 +418,7 @@ namespace Actuators
       void
       parseMSG_TQ_BATCTL()
       {
-        uint8_t motor_index = m_can_bfr[0]; // MAY need to be masked, only 4 first bits id, rest reserved
+        uint8_t motor_index = m_can_bfr[0]; // MAY need to be masked, only 4 last bits id, rest reserved
         uint8_t master_error = m_can_bfr[1];
         uint8_t error_count = m_can_bfr[2];
         uint8_t firmware_ver = m_can_bfr[3];
@@ -430,7 +430,7 @@ namespace Actuators
       void
       parseMSG_OUTPUTS()
       {
-        uint8_t rail_index = m_can_bfr[0] >> 4; // Shifts away reserved bits
+        uint8_t rail_index = m_can_bfr[0];
         uint32_t states = (m_can_bfr[4] << 24) | (m_can_bfr[3] << 16) | (m_can_bfr[2] << 8) | m_can_bfr[1];
         trace(DTR("MSG_OUTPUTS: Rail#%u - Master error: %08X;"),
               rail_index, states);
@@ -441,7 +441,7 @@ namespace Actuators
       parseMSG_UPTIME()
       {
         uint32_t uptime_s = (uint32_t)0 | (m_can_bfr[2] << 16) | (m_can_bfr[1] << 8) | m_can_bfr[0];
-        uint8_t last_reset_case = m_can_bfr[3] >> 4; // Shifts away reserved bits
+        uint8_t last_reset_case = m_can_bfr[3];
         trace(DTR("MSG_UPTIME: Uptime#%ds; Last reset case: %01X;"),
               uptime_s, last_reset_case);
       }
@@ -460,7 +460,7 @@ namespace Actuators
       void
       parseMSG_TQ_MOTOR_STATUS_BITS()
       {
-        uint8_t motor_index = m_can_bfr[0] >> 4; // Shifts away reserved bits
+        uint8_t motor_index = m_can_bfr[0];
         uint16_t errors = combineUint8ToUint16(m_can_bfr[2], m_can_bfr[1]);
         uint8_t status = m_can_bfr[3];
         trace(DTR("MSG_TQ_MOTOR_STATUS_BITS: Motor#%u - Errors: %u; Status %u"),
