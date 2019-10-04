@@ -46,7 +46,8 @@ namespace Actuators
     static const unsigned c_max_batteries = 4;
     //! Number of power lines
     static const unsigned c_pwrs_count = 10;
-
+    //! Number of power rails
+    static const unsigned c_pwr_rails_count = 4;
     enum torqeedo_msg_identifiers_t
     {
       MSG_TEXT = 0,
@@ -132,6 +133,8 @@ namespace Actuators
       unsigned m_battery_eid[c_max_batteries];
       //! Motors Entities
       unsigned m_motor_eid[2];
+      //! Power Rail Entities
+      unsigned m_power_rail_eid[c_pwr_rails_count];
       //! Most recent throttle values.
       int16_t motor0_throttle, motor1_throttle;
       //! CAN connection variable
@@ -223,7 +226,14 @@ namespace Actuators
         {
           new_label << label << " - Battery " << i; // TODO: Se om denne kan gjøres om til + mellom strings
           m_battery_eid[i] = reserveEntity(new_label.str());
-          new_label.str(""); // Why is this line here? TO empty string stream?
+          new_label.str(""); // Why is this line here? TO empty string stream
+        }
+
+        for (unsigned i = 0; i < c_pwr_rails_count; i++)
+        {
+          new_label << label << " - Rail " << i; // TODO: Se om denne kan gjøres om til + mellom strings
+          m_power_rail_eid[i] = reserveEntity(new_label.str());
+          new_label.str(""); // Why is this line here? TO empty string stream
         }
       }
 
@@ -288,7 +298,6 @@ namespace Actuators
           motor1_throttle = int16_t(1000 * msg->value);
           break;
         }
-        //sendSetMotorThrottle(motor0_throttle, motor1_throttle); // TODO: Kan kanskje tas bort når den kjører periodisk i main
       }
 
       //! Consume PowerChannelControl messages, forward them to CAN bus
@@ -328,19 +337,20 @@ namespace Actuators
       parseMSG_TQ_BAT_STATUS() 
       {
         uint8_t bat_idx = m_can_bfr[0];
-        uint8_t soc = m_can_bfr[6];
-        uint8_t temp = m_can_bfr[1];
-        uint8_t err_code = m_can_bfr[7];
+        uint8_t temp_C = m_can_bfr[1];
         uint16_t voltage_raw = combineUint8ToUint16(m_can_bfr[3], m_can_bfr[2]);
         uint16_t current_raw = combineUint8ToUint16(m_can_bfr[5], m_can_bfr[4]);
+        uint8_t soc = m_can_bfr[6];  // State of charge
+        uint8_t err_code = m_can_bfr[7];
+
         fp32_t voltage = fp32_t(voltage_raw) * 0.01;
         fp32_t current = fp32_t(current_raw) * 0.1;
         trace("MSG_TQ_BAT_STATUS: Batt#%d - Charge: %d; Voltage %0.2fV; Current: %0.1fA; Temp: %d, Error: %d",
-              bat_idx, soc, voltage, current, temp, err_code);
+              bat_idx, soc, voltage, current, temp_C, err_code);
 
         IMC::Temperature temp_msg;
         temp_msg.setSourceEntity(m_battery_eid[bat_idx]);
-        temp_msg.value = fp32_t(temp);
+        temp_msg.value = fp32_t(temp_C);
         dispatch(temp_msg);
         
         IMC::Voltage voltage_msg;
@@ -373,10 +383,19 @@ namespace Actuators
         char flags = m_can_bfr[7];
 
         
-        float voltage_V = float(voltage_mV) * 0.001;
-        float current_A = float(current_mA) * 0.001;
-        trace("MSG_RAIL: Rail#%d - Voltage %0.3fV; Current: %d mA,  Current: %f A, fuse_halfamps: %u, flags: %02X", rail_idx, voltage_V, current_mA, current_A, fuse_halfamps, flags);
-        // TODO: Send IMC::
+        fp32_t voltage_V = fp32_t(voltage_mV) * 0.001;
+        fp32_t current_A = fp32_t(current_mA) * 0.001;
+        trace("MSG_RAIL: Rail#%d - Voltage: %0.3fV, Current: %f A, fuse_halfamps: %u, flags: %02X", rail_idx, voltage_V, current_A, fuse_halfamps, flags);
+
+        IMC::Voltage voltage_msg;
+        voltage_msg.setSourceEntity(m_power_rail_eid[rail_idx]);
+        voltage_msg.value = voltage_V;
+        dispatch(voltage_msg);
+        
+        IMC::Current current_msg;
+        current_msg.setSourceEntity(m_power_rail_eid[rail_idx]);
+        current_msg.value = current_A;
+        dispatch(current_msg);
       }
 
       //! Parses a received MSG_TQ_MOTOR_DRIVE from CAN bus and sends relevant data to IMC
