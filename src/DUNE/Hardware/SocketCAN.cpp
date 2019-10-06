@@ -85,20 +85,18 @@ namespace DUNE
     		default:
     			throw Error("Frame type not recognized", System::Error::getLastMessage());
     	}
-
-
-
-	    // Get the index of the network interface
+      
 	    std::strncpy(m_ifr.ifr_name, can_dev.c_str(), IFNAMSIZ);
 
 
-        if(::ioctl(m_can_socket, SIOCGIFFLAGS, &m_ifr) < 0) {
-            throw Error("Could not read SIOCGIFFLAGS with ioctl", System::Error::getLastMessage());
-        }
-        if ( !(m_ifr.ifr_flags & IFF_UP) ) {
-            throw Error("CAN network is down", System::Error::getLastMessage());
-        }
+      if(::ioctl(m_can_socket, SIOCGIFFLAGS, &m_ifr) < 0) {
+          throw Error("Could not read SIOCGIFFLAGS with ioctl", System::Error::getLastMessage());
+      }
+      if ( !(m_ifr.ifr_flags & IFF_UP) ) {
+          throw Error("CAN network is down", System::Error::getLastMessage());
+      }
 
+      // Get the index of the network interface
 	    if (::ioctl(m_can_socket, SIOCGIFINDEX, &m_ifr) == -1)
 	      throw Error("Coult not get interface index with ioctl", System::Error::getLastMessage());
 
