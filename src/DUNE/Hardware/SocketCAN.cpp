@@ -1,3 +1,32 @@
+//***************************************************************************
+// Copyright 2013-2019 Norwegian University of Science and Technology (NTNU)*
+// Department of Engineering Cybernetics (ITK)                              *
+//***************************************************************************
+// This file is part of DUNE: Unified Navigation Environment.               *
+//                                                                          *
+// Commercial Licence Usage                                                 *
+// Licencees holding valid commercial DUNE licences may use this file in    *
+// accordance with the commercial licence agreement provided with the       *
+// Software or, alternatively, in accordance with the terms contained in a  *
+// written agreement between you and Faculdade de Engenharia da             *
+// Universidade do Porto. For licensing terms, conditions, and further      *
+// information contact lsts@fe.up.pt.                                       *
+//                                                                          *
+// Modified European Union Public Licence - EUPL v.1.1 Usage                *
+// Alternatively, this file may be used under the terms of the Modified     *
+// EUPL, Version 1.1 only (the "Licence"), appearing in the file LICENCE.md *
+// included in the packaging of this file. You may not use this work        *
+// except in compliance with the Licence. Unless required by applicable     *
+// law or agreed to in writing, software distributed under the Licence is   *
+// distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF     *
+// ANY KIND, either express or implied. See the Licence for the specific    *
+// language governing permissions and limitations at                        *
+// https://github.com/LSTS/dune/blob/master/LICENCE.md and                  *
+// http://ec.europa.eu/idabc/eupl.html.                                     *
+//***************************************************************************
+// Author: Nikolai Lauvås                                                  *
+//***************************************************************************
+
 // ISO C++ 98 headers.
 #include <string>
 #include <sstream>
@@ -37,10 +66,10 @@ namespace DUNE
     {
     	can_frame_type = frame_type;
     	m_can_socket = ::socket(PF_CAN, SOCK_RAW, CAN_RAW);
-    	//int rc;
-		  if (m_can_socket < 0) {
+		if (m_can_socket < 0) {
 	        throw Error("Error while opening socket for CANbus", System::Error::getLastMessage()); //TODO: Check
 	    }
+
 	    int enable, rc;
     	switch(can_frame_type) {
     		case CAN_BASIC_SFF:
@@ -57,10 +86,21 @@ namespace DUNE
     			throw Error("Frame type not recognized", System::Error::getLastMessage());
     	}
 
+
+
 	    // Get the index of the network interface
 	    std::strncpy(m_ifr.ifr_name, can_dev.c_str(), IFNAMSIZ);
+
+
+        if(::ioctl(m_can_socket, SIOCGIFFLAGS, &m_ifr) < 0) {
+            throw Error("Could not read SIOCGIFFLAGS with ioctl", System::Error::getLastMessage());
+        }
+        if ( !(m_ifr.ifr_flags & IFF_UP) ) {
+            throw Error("CAN network is down", System::Error::getLastMessage());
+        }
+
 	    if (::ioctl(m_can_socket, SIOCGIFINDEX, &m_ifr) == -1)
-	      throw Error("ioctl CAN error", System::Error::getLastMessage()); //TODO: Check
+	      throw Error("Coult not get interface index with ioctl", System::Error::getLastMessage());
 
 	    // Bind the socket to the network interface
 	    m_addr.can_family = AF_CAN;

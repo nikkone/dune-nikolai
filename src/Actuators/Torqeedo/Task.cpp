@@ -1,6 +1,6 @@
 //***************************************************************************
-// Copyright 2007-2019 Universidade do Porto - Faculdade de Engenharia      *
-// Laboratório de Sistemas e Tecnologia Subaquática (LSTS)                  *
+// Copyright 2013-2019 Norwegian University of Science and Technology (NTNU)*
+// Department of Engineering Cybernetics (ITK)                              *
 //***************************************************************************
 // This file is part of DUNE: Unified Navigation Environment.               *
 //                                                                          *
@@ -26,7 +26,9 @@
 //***************************************************************************
 // Author: Nikolai Lauvås                                                  *
 //***************************************************************************
-#include <map> // TODO: MOVE
+
+// ISO C++ 98 headers.
+#include <map>
 // DUNE headers.
 #include <DUNE/DUNE.hpp>
 #include <DUNE/Hardware/SocketCAN.hpp>
@@ -35,8 +37,9 @@
 #define ADDR_TQIF 0xab
 namespace Actuators
 {
-  //! Implements Maritime Robotics Interface card to Torqeedo motors and batteries through CAN
-  //!
+  //! This task acts as a bridge between the Maritime Robotics(MR) Interface card to Torqeedo motors and batteries, and DUNE with IMC messages
+  //! Messages are sent to the motors periodically, at least once per/second, or else motors stops(see msg_tq_motor_set in mr_can.h from MR)
+  //! 
   //! Reads and writes CAN frames to a buffer that is sent to Hardware::SocketCAN.
   //! @author Nikolai Lauvås
   namespace Torqeedo
@@ -48,6 +51,8 @@ namespace Actuators
     static const unsigned c_pwrs_count = 10;
     //! Number of power rails
     static const unsigned c_pwr_rails_count = 4;
+    //! Number of motors
+    static const unsigned c_motors = 2;
     enum torqeedo_msg_identifiers_t
     {
       MSG_TEXT = 0,
@@ -132,14 +137,14 @@ namespace Actuators
       //! Batteries Entities
       unsigned m_battery_eid[c_max_batteries];
       //! Motors Entities
-      unsigned m_motor_eid[2];
+      unsigned m_motor_eid[c_motors];
       //! Power Rail Entities
       unsigned m_power_rail_eid[c_pwr_rails_count];
       //! Most recent throttle values.
       int16_t motor0_throttle, motor1_throttle;
       //! CAN connection variable
       Hardware::SocketCAN* m_can;
-      //! CAN buffer used for storing and senings messages
+      //! CAN buffer used for storing and sending messages
       char m_can_bfr[9];
       //! Task arguments.
       Arguments m_args;
@@ -218,22 +223,20 @@ namespace Actuators
       onEntityReservation(void)
       {
         std::string label = getEntityLabel();
-        m_motor_eid[0] = reserveEntity(label + " - Motor 0");
-        m_motor_eid[1] = reserveEntity(label + " - Motor 1");
 
-        std::stringstream new_label;
+        for (unsigned i = 0; i < c_motors; i++)
+        {
+          m_motor_eid[i] = reserveEntity(label + " - Motor " + std::to_string(i));
+        }
+
         for (unsigned i = 0; i < m_args.num_bats; i++)
         {
-          new_label << label << " - Battery " << i; // TODO: Se om denne kan gjøres om til + mellom strings
-          m_battery_eid[i] = reserveEntity(new_label.str());
-          new_label.str(""); // Why is this line here? TO empty string stream
+          m_battery_eid[i] = reserveEntity(label + " - Battery " + std::to_string(i));
         }
 
         for (unsigned i = 0; i < c_pwr_rails_count; i++)
         {
-          new_label << label << " - Rail " << i; // TODO: Se om denne kan gjøres om til + mellom strings
-          m_power_rail_eid[i] = reserveEntity(new_label.str());
-          new_label.str(""); // Why is this line here? TO empty string stream
+          m_power_rail_eid[i] = reserveEntity(label + " - Rail " + std::to_string(i));
         }
       }
 
@@ -252,8 +255,8 @@ namespace Actuators
           setEntityState(IMC::EntityState::ESTA_NORMAL, Status::CODE_ACTIVE);
         }
         catch(std::runtime_error& e) {
-          err(DTR("Could not open CAN: %s"), e.what());
-          setEntityState(IMC::EntityState::ESTA_ERROR, Status::CODE_IDLE);
+          cri(DTR("Could not open CAN: %s"), e.what());
+          setEntityState(IMC::EntityState::ESTA_ERROR, Status::CODE_IO_ERROR);
         }
       }
 
@@ -268,9 +271,10 @@ namespace Actuators
       void
       onResourceInitialization(void)
       {
-        spew(DTR("Init resurces"));
-        sendPowerChannelMessages();
-
+        spew(DTR("Init resources"));
+        if(m_can != NULL) {
+          sendPowerChannelMessages();
+        }
       }
 
       //! Release resources.
@@ -318,28 +322,28 @@ namespace Actuators
         sendSetPower(m_pwr_chs[msg->name]);
       }
 
-      //! Convenience/readability function for combining uint8_t to uint16_t
+      //! Convenience/readability function for combining two char inputs to  one uint16_t
       uint16_t
-      combineUint8ToUint16(uint8_t most_significant, uint8_t least_significant) // TODO: Change to char inputs
+      combine2charToUint16(char most_significant, char least_significant)
       {
         return (uint16_t)(most_significant << 8) | least_significant;
       }
 
-      //! Convenience/readability function for combining char to int16_t
+      //! Convenience/readability function for combining two char inputs to one int16_t
       int16_t 
-      combinecharToInt16(char most_significant, char least_significant) 
+      combine2charToInt16(char most_significant, char least_significant) 
       {
         return (int16_t)(most_significant << 8) | least_significant;
       }
 
-      //! Parses a received MSG_TQ_BAT_STATUS from CAN bus and sends relevant data to IMC
+      //! Parses a received MSG_TQ_BAT_STATUS from CAN bus buffer and sends relevant data to IMC
       void 
       parseMSG_TQ_BAT_STATUS() 
       {
         uint8_t bat_idx = m_can_bfr[0];
         uint8_t temp_C = m_can_bfr[1];
-        uint16_t voltage_raw = combineUint8ToUint16(m_can_bfr[3], m_can_bfr[2]);
-        uint16_t current_raw = combineUint8ToUint16(m_can_bfr[5], m_can_bfr[4]);
+        uint16_t voltage_raw = combine2charToUint16(m_can_bfr[3], m_can_bfr[2]);
+        uint16_t current_raw = combine2charToUint16(m_can_bfr[5], m_can_bfr[4]);
         uint8_t soc = m_can_bfr[6];  // State of charge
         uint8_t err_code = m_can_bfr[7];
 
@@ -369,13 +373,13 @@ namespace Actuators
         dispatch(level_msg);
       }
 
-      //! Parses a received MSG_RAIL from CAN bus and sends relevant data to IMC
+      //! Parses a received MSG_RAIL from CAN bus buffer and sends relevant data to IMC
       void
       parseMSG_RAIL()
       {
         uint8_t rail_idx = m_can_bfr[0];
         ///Voltage (mV)
-        uint16_t voltage_mV = combineUint8ToUint16(m_can_bfr[2], m_can_bfr[1]);
+        uint16_t voltage_mV = combine2charToUint16(m_can_bfr[2], m_can_bfr[1]);
         ///Current (mA) TODO: Should this be int32_t? signed in mrcan
         int32_t current_mA = (int32_t)0 | (m_can_bfr[5] << 16) | (m_can_bfr[4] << 8) | m_can_bfr[3];
         ///Electronic fuse trip current (A*2)
@@ -398,17 +402,17 @@ namespace Actuators
         dispatch(current_msg);
       }
 
-      //! Parses a received MSG_TQ_MOTOR_DRIVE from CAN bus and sends relevant data to IMC
+      //! Parses a received MSG_TQ_MOTOR_DRIVE from CAN bus buffer and sends relevant data to IMC
       void
       parseMSG_TQ_MOTOR_DRIVE()
       {
         uint8_t mot_idx = m_can_bfr[0];
         /// Power in whole watts
-        uint16_t power = combineUint8ToUint16(m_can_bfr[2], m_can_bfr[1]);
+        uint16_t power = combine2charToUint16(m_can_bfr[2], m_can_bfr[1]);
         /// PCB temperature in tenths of degrees celsius
-        int16_t temp_raw = combinecharToInt16(m_can_bfr[4], m_can_bfr[3]);
+        int16_t temp_raw = combine2charToInt16(m_can_bfr[4], m_can_bfr[3]);
         /// Divide by 7 (gear ratio) to get propeller RPM
-        uint16_t rpm_raw = combineUint8ToUint16(m_can_bfr[6], m_can_bfr[5]);
+        uint16_t rpm_raw = combine2charToUint16(m_can_bfr[6], m_can_bfr[5]);
         
         fp32_t temp = fp32_t(temp_raw) * 0.1;
         uint16_t rpm = rpm_raw / 7; // Rounds down to nearest whole number
@@ -434,6 +438,7 @@ namespace Actuators
         inf("MSG_TEXT: %s", m_can_bfr);
       }
 
+      //! Parses a received MSG_TQ_BATCTL from CAN bus buffer and makes it available for trace debug
       void
       parseMSG_TQ_BATCTL()
       {
@@ -446,6 +451,7 @@ namespace Actuators
 
       }
 
+      //! Parses a received MSG_OUTPUTS from CAN bus buffer and makes it available for trace debug
       void
       parseMSG_OUTPUTS()
       {
@@ -456,6 +462,7 @@ namespace Actuators
 
       }
 
+      //! Parses a received MSG_UPTIME from CAN bus buffer and makes it available for trace debug
       void
       parseMSG_UPTIME()
       {
@@ -465,22 +472,24 @@ namespace Actuators
               uptime_s, last_reset_case);
       }
 
+      //! Parses a received MSG_ID_V2 from CAN bus buffer and makes it available for trace debug
       void
       parseMSG_ID_V2()
       {
-        uint16_t company = combineUint8ToUint16(m_can_bfr[1], m_can_bfr[0]);
-        uint16_t product = combineUint8ToUint16(m_can_bfr[3], m_can_bfr[2]);
-        uint16_t serial_number = combineUint8ToUint16(m_can_bfr[5], m_can_bfr[4]);
-        uint16_t firmware_version = combineUint8ToUint16(m_can_bfr[7], m_can_bfr[6]);
+        uint16_t company = combine2charToUint16(m_can_bfr[1], m_can_bfr[0]);
+        uint16_t product = combine2charToUint16(m_can_bfr[3], m_can_bfr[2]);
+        uint16_t serial_number = combine2charToUint16(m_can_bfr[5], m_can_bfr[4]);
+        uint16_t firmware_version = combine2charToUint16(m_can_bfr[7], m_can_bfr[6]);
         trace(DTR("MSG_ID_V2: Company#%d; Product: %d; Serial number: %d; Firmware: %d;"),
               company, product, serial_number, firmware_version);
       }
 
+      //! Parses a received MSG_TQ_MOTOR_STATUS_BITS from CAN bus buffer and makes it available for trace debug
       void
       parseMSG_TQ_MOTOR_STATUS_BITS()
       {
         uint8_t motor_index = m_can_bfr[0];
-        uint16_t errors = combineUint8ToUint16(m_can_bfr[2], m_can_bfr[1]);
+        uint16_t errors = combine2charToUint16(m_can_bfr[2], m_can_bfr[1]);
         uint8_t status = m_can_bfr[3];
         trace(DTR("MSG_TQ_MOTOR_STATUS_BITS: Motor#%u - Errors: %u; Status %u"),
               motor_index, errors, status);
@@ -588,18 +597,20 @@ namespace Actuators
       void
       task(void)
       {
-        waitForMessages(0.01); // Parametriser?
-        motor_send_counter++;
-        if(motor_send_counter >= m_args.motor_write_divider) {
-          spew(DTR("Motor send: %d, %d"), motor0_throttle, motor1_throttle);
-          sendSetMotorThrottle(motor0_throttle, motor1_throttle);
-          motor_send_counter = 0;
-        } else {
-          readCanMessage();
-        }
-        if(m_unsent_power_parameters) {
-          sendPowerChannelMessages();
-          m_unsent_power_parameters = false;
+        if(m_can != NULL) {
+          waitForMessages(0.01); // Parametriser?
+          motor_send_counter++;
+          if(motor_send_counter >= m_args.motor_write_divider) {
+            spew(DTR("Motor send: %d, %d"), motor0_throttle, motor1_throttle);
+            sendSetMotorThrottle(motor0_throttle, motor1_throttle);
+            motor_send_counter = 0;
+          } else {
+            readCanMessage();
+          }
+          if(m_unsent_power_parameters) {
+            sendPowerChannelMessages();
+            m_unsent_power_parameters = false;
+          }
         }
       }
     };
