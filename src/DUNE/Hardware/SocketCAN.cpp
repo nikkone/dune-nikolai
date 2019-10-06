@@ -64,29 +64,29 @@ namespace DUNE
 #if defined(DUNE_OS_LINUX)
     SocketCAN::SocketCAN(const std::string& can_dev, can_frame_t frame_type)
     {
-    	can_frame_type = frame_type;
-    	m_can_socket = ::socket(PF_CAN, SOCK_RAW, CAN_RAW);
-		if (m_can_socket < 0) {
-	        throw Error("Error while opening socket for CANbus", System::Error::getLastMessage()); //TODO: Check
-	    }
+      can_frame_type = frame_type;
+      m_can_socket = ::socket(PF_CAN, SOCK_RAW, CAN_RAW);
+    if (m_can_socket < 0) {
+          throw Error("Error while opening socket for CANbus", System::Error::getLastMessage()); //TODO: Check
+      }
 
-	    int enable, rc;
-    	switch(can_frame_type) {
-    		case CAN_BASIC_SFF:
+      int enable, rc;
+      switch(can_frame_type) {
+        case CAN_BASIC_SFF:
             break;
             case CAN_BASIC_EFF:
-    		break;
-    		case CAN_FD:
-    			enable = 1;
-			    rc = ::setsockopt(m_can_socket, SOL_CAN_RAW, CAN_RAW_FD_FRAMES, &enable, sizeof (enable));
-			    if (rc == -1)
-			      throw Error("Failed to enable FD frames", System::Error::getLastMessage()); //TODO: Check
-    		break;
-    		default:
-    			throw Error("Frame type not recognized", System::Error::getLastMessage());
-    	}
+        break;
+        case CAN_FD:
+          enable = 1;
+          rc = ::setsockopt(m_can_socket, SOL_CAN_RAW, CAN_RAW_FD_FRAMES, &enable, sizeof (enable));
+          if (rc == -1)
+            throw Error("Failed to enable FD frames", System::Error::getLastMessage()); //TODO: Check
+        break;
+        default:
+          throw Error("Frame type not recognized", System::Error::getLastMessage());
+      }
       
-	    std::strncpy(m_ifr.ifr_name, can_dev.c_str(), IFNAMSIZ);
+      std::strncpy(m_ifr.ifr_name, can_dev.c_str(), IFNAMSIZ);
 
 
       if(::ioctl(m_can_socket, SIOCGIFFLAGS, &m_ifr) < 0) {
@@ -97,16 +97,16 @@ namespace DUNE
       }
 
       // Get the index of the network interface
-	    if (::ioctl(m_can_socket, SIOCGIFINDEX, &m_ifr) == -1)
-	      throw Error("Coult not get interface index with ioctl", System::Error::getLastMessage());
+      if (::ioctl(m_can_socket, SIOCGIFINDEX, &m_ifr) == -1)
+        throw Error("Coult not get interface index with ioctl", System::Error::getLastMessage());
 
-	    // Bind the socket to the network interface
-	    m_addr.can_family = AF_CAN;
-	    m_addr.can_ifindex = m_ifr.ifr_ifindex;
-	    rc = ::bind(m_can_socket, reinterpret_cast<struct sockaddr*> (&m_addr), sizeof (m_addr));
-	      
-	    if (rc == -1)
-	      throw Error("Could not bind CAN socket", System::Error::getLastMessage()); //TODO: Check
+      // Bind the socket to the network interface
+      m_addr.can_family = AF_CAN;
+      m_addr.can_ifindex = m_ifr.ifr_ifindex;
+      rc = ::bind(m_can_socket, reinterpret_cast<struct sockaddr*> (&m_addr), sizeof (m_addr));
+
+      if (rc == -1)
+        throw Error("Could not bind CAN socket", System::Error::getLastMessage()); //TODO: Check
     }
 
     //! Serial port destructor.
@@ -149,65 +149,65 @@ namespace DUNE
         std::string out = ss.str();
         strncpy(bfr, out.c_str(), out.length()+1); // +1 because of '\0 added in c_str'
 
-    	return out.length()+1;
+      return out.length()+1;
     }
 
     size_t
     SocketCAN::doWrite(const uint8_t* bfr, size_t size) { // TODO: Add exceptions
-    	int writtenBytes;
-    	switch(can_frame_type) {
-    		case CAN_BASIC_SFF:
+      int writtenBytes;
+      switch(can_frame_type) {
+        case CAN_BASIC_SFF:
         case CAN_BASIC_EFF:
-    			struct can_frame frame;
-    			frame.can_dlc = size;
-    			frame.can_id = cantxid;
+          struct can_frame frame;
+          frame.can_dlc = size;
+          frame.can_id = cantxid;
           memcpy(frame.data, bfr, size);
-					writtenBytes = ::write(m_can_socket, &frame, CAN_MTU);
-    		break;
-    		case CAN_FD:
-    			struct canfd_frame fdframe;
-    			fdframe.len = size;
-    			fdframe.can_id = cantxid;
+          writtenBytes = ::write(m_can_socket, &frame, CAN_MTU);
+        break;
+        case CAN_FD:
+          struct canfd_frame fdframe;
+          fdframe.len = size;
+          dframe.can_id = cantxid;
           memcpy(fdframe.data, bfr, size);
-					writtenBytes = ::write(m_can_socket, &fdframe, CANFD_MTU);
-    		break;
-    		default:
-    			throw Error("Frame type not recognized", System::Error::getLastMessage());
-    	}
+          writtenBytes = ::write(m_can_socket, &fdframe, CANFD_MTU);
+        break;
+        default:
+          throw Error("Frame type not recognized", System::Error::getLastMessage());
+      }
       return size;
     }
 
     size_t
     SocketCAN::doRead(uint8_t* bfr, size_t size) { //TODO: Add timeout
-    	int numBytes;
-    	switch(can_frame_type) {
-    		case CAN_BASIC_EFF:
+      int numBytes;
+      switch(can_frame_type) {
+        case CAN_BASIC_EFF:
         case CAN_BASIC_SFF:
-    		  struct can_frame frame;
-      		numBytes = ::read(m_can_socket, &frame, CAN_MTU);
-      		if(numBytes) {
-	          for(uint8_t i=0; i<frame.can_dlc && i<size; i++) {
-	            bfr[i] = frame.data[i];
-          	}
-          	canrxid = frame.can_id;
-          	return frame.can_dlc;
-        	}
-    		break;
-    		case CAN_FD:
-	    		struct canfd_frame fdframe;
-	        numBytes = ::read(m_can_socket, &fdframe, CANFD_MTU);
-	        if(numBytes) {
-	          for(uint8_t i=0; i<fdframe.len && i<size; i++) {
-	            bfr[i] = fdframe.data[i];
-	          }
-	          canrxid = fdframe.can_id;
-	          return fdframe.len;
-	        }
-    		break;
-    		default:
-    			throw Error("Frame type not recognized", System::Error::getLastMessage());
-    	}
-    	return 0; //Should never be reached
+          struct can_frame frame;
+          numBytes = ::read(m_can_socket, &frame, CAN_MTU);
+          if(numBytes) {
+            for(uint8_t i=0; i<frame.can_dlc && i<size; i++) {
+              bfr[i] = frame.data[i];
+            }
+            canrxid = frame.can_id;
+            return frame.can_dlc;
+          }
+        break;
+        case CAN_FD:
+          struct canfd_frame fdframe;
+          numBytes = ::read(m_can_socket, &fdframe, CANFD_MTU);
+          if(numBytes) {
+            for(uint8_t i=0; i<fdframe.len && i<size; i++) {
+              bfr[i] = fdframe.data[i];
+            }
+            canrxid = fdframe.can_id;
+            return fdframe.len;
+          }
+        break;
+        default:
+          throw Error("Frame type not recognized", System::Error::getLastMessage());
+      }
+      return 0; //Should never be reached
     }
 
     //! Flush input buffer, discarding all of it's contents.
