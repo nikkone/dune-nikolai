@@ -167,7 +167,7 @@ namespace DUNE
         case CAN_FD:
           struct canfd_frame fdframe;
           fdframe.len = size;
-          dframe.can_id = cantxid;
+          fdframe.can_id = cantxid;
           memcpy(fdframe.data, bfr, size);
           writtenBytes = ::write(m_can_socket, &fdframe, CANFD_MTU);
         break;
