@@ -585,10 +585,12 @@ namespace Actuators
       void
       sendSetMotorThrottle( int16_t motor0, int16_t motor1)
       {
-        m_can_bfr[0] = (char)((motor0 & 0xFF00) >> 8);
-        m_can_bfr[1] = (char)(motor0 & 0x00FF);
-        m_can_bfr[2] = (char)((motor1 & 0xFF00) >> 8);
-        m_can_bfr[3] = (char)(motor1 & 0x00FF);
+        
+        m_can_bfr[0] = (char)(motor0 & 0x00FF);
+        m_can_bfr[1] = (char)((motor0 & 0xFF00) >> 8);
+        m_can_bfr[2] = (char)(motor1 & 0x00FF);
+        m_can_bfr[3] = (char)((motor1 & 0xFF00) >> 8);
+
         m_can->setTXID(prepareTorqeedoCANID(MSG_TQ_MOTOR_SET));
         m_can->write(m_can_bfr, 4);
       }
