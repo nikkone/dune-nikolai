@@ -46,7 +46,7 @@ namespace Actuators
   {
     using DUNE_NAMESPACES;
     //! Maximum number of batteries connected to the Torqeedo board
-    static const unsigned c_max_batteries = 4;
+    static const unsigned c_num_batteries = 4;
     //! Number of power lines
     static const unsigned c_pwrs_count = 10;
     //! Number of power rails
@@ -109,8 +109,6 @@ namespace Actuators
     {
       //! CAN bus device name
       std::string can_dev;
-      //! Number of Batteries.
-      uint8_t num_bats;
       //! Power channels names.
       std::string pwr_names[c_pwrs_count];
       //! Initial power channels states.
@@ -127,6 +125,7 @@ namespace Actuators
     };
     struct Task: public DUNE::Tasks::Periodic
     {
+      //! Is there unsent power control messages
       bool m_unsent_power_parameters;
       //! Most recent throttle values.
       unsigned int motor_send_counter;
@@ -135,7 +134,7 @@ namespace Actuators
       //! Power channels by name.
       PowerChannelMap m_pwr_chs;
       //! Batteries Entities
-      unsigned m_battery_eid[c_max_batteries];
+      unsigned m_battery_eid[c_num_batteries];
       //! Motors Entities
       unsigned m_motor_eid[c_motors];
       //! Power Rail Entities
@@ -162,10 +161,6 @@ namespace Actuators
         param("CAN Port - Device", m_args.can_dev)
         .defaultValue("")
         .description("CAN port used to communicate with the Torqeedo board.");
-
-        param("Batteries", m_args.num_bats)
-        .defaultValue("2")
-        .description("Number of batteries connected to the Torqeedo board.");
 
         param("Motor write divider", m_args.motor_write_divider)
         .defaultValue("20")
@@ -229,7 +224,7 @@ namespace Actuators
           m_motor_eid[i] = reserveEntity(label + " - Motor " + std::to_string(i));
         }
 
-        for (unsigned i = 0; i < m_args.num_bats; i++)
+        for (unsigned i = 0; i < c_num_batteries; i++)
         {
           m_battery_eid[i] = reserveEntity(label + " - Battery " + std::to_string(i));
         }
@@ -289,7 +284,7 @@ namespace Actuators
         }
       }
 
-      //! Consume SetThrusterActuation messages, forward them to CAN bus
+      //! Consume SetThrusterActuation messages
       void
       consume(const IMC::SetThrusterActuation* msg)
       {
@@ -322,7 +317,7 @@ namespace Actuators
         sendSetPower(m_pwr_chs[msg->name]);
       }
 
-      //! Convenience/readability function for combining two char inputs to  one uint16_t
+      //! Convenience/readability function for combining two char inputs to one uint16_t
       uint16_t
       combine2charToUint16(char most_significant, char least_significant)
       {
@@ -415,7 +410,7 @@ namespace Actuators
         uint16_t rpm_raw = combine2charToUint16(m_can_bfr[6], m_can_bfr[5]);
         
         fp32_t temp = fp32_t(temp_raw) * 0.1;
-        uint16_t rpm = rpm_raw / 7; // Rounds down to nearest whole number
+        int16_t rpm = (int16_t)rpm_raw / 7; // Rounds down to nearest whole number
 
         trace("MSG_TQ_MOTOR_DRIVE: Motor#%d - Power: %dW; Temp %0.1fC; RPM: %d",
               mot_idx, power, temp, rpm);
@@ -427,7 +422,7 @@ namespace Actuators
         
         IMC::Rpm rpm_msg;
         rpm_msg.setSourceEntity(m_motor_eid[mot_idx]);
-        rpm_msg.value = (int16_t)rpm;
+        rpm_msg.value = rpm;
         dispatch(rpm_msg);
       }
 
