@@ -28,7 +28,7 @@
 //***************************************************************************
 // Automatically generated.                                                 *
 //***************************************************************************
-// IMC XML MD5: 009a5046be102f40bfccc623630722a7                            *
+// IMC XML MD5: 3e9024be239f96addae90c415a6be345                            *
 //***************************************************************************
 
 #ifndef DUNE_IMC_DEFINITIONS_HPP_INCLUDED_
@@ -25443,6 +25443,257 @@ namespace DUNE
 
       void
       setValueFP(fp64_t val);
+
+      void
+      fieldsToJSON(std::ostream& os__, unsigned nindent__) const;
+    };
+
+    //! Home Position.
+    class HomePosition: public Message
+    {
+    public:
+      //! Action on the vehicle home position.
+      enum ActiononthevehiclehomepositionEnum
+      {
+        //! Set.
+        OP_SET = 1,
+        //! Report.
+        OP_REPORT = 2
+      };
+
+      //! Action on the vehicle home position.
+      uint8_t op;
+      //! Latitude (WGS-84).
+      fp64_t lat;
+      //! Longitude (WGS-84).
+      fp64_t lon;
+      //! Height (WGS-84).
+      fp32_t height;
+      //! Depth.
+      fp32_t depth;
+      //! Altitude.
+      fp32_t alt;
+
+      static uint16_t
+      getIdStatic(void)
+      {
+        return 909;
+      }
+
+      HomePosition(void);
+
+      HomePosition*
+      clone(void) const
+      {
+        return new HomePosition(*this);
+      }
+
+      void
+      clear(void);
+
+      bool
+      fieldsEqual(const Message& msg__) const;
+
+      int
+      validate(void) const;
+
+      uint8_t*
+      serializeFields(uint8_t* bfr__) const;
+
+      uint16_t
+      deserializeFields(const uint8_t* bfr__, uint16_t size__);
+
+      uint16_t
+      reverseDeserializeFields(const uint8_t* bfr__, uint16_t size__);
+
+      uint16_t
+      getId(void) const
+      {
+        return HomePosition::getIdStatic();
+      }
+
+      const char*
+      getName(void) const
+      {
+        return "HomePosition";
+      }
+
+      unsigned
+      getFixedSerializationSize(void) const
+      {
+        return 29;
+      }
+
+      void
+      fieldsToJSON(std::ostream& os__, unsigned nindent__) const;
+    };
+
+    //! TBR Fish Tag.
+    class TBRFishTag: public Message
+    {
+    public:
+      //! Transmit Protocol.
+      enum TransmitProtocolEnum
+      {
+        //! R256.
+        TBR_R256 = 1,
+        //! R04K.
+        TBR_R04K = 2,
+        //! R06K.
+        TBR_R06K = 3,
+        //! R64K.
+        TBR_R64K = 4,
+        //! R01M.
+        TBR_R01M = 5,
+        //! S256.
+        TBR_S256 = 6,
+        //! HS256.
+        TBR_HS256 = 7,
+        //! DS256.
+        TBR_DS256 = 8
+      };
+
+      //! TBR serial number.
+      uint32_t serial_no;
+      //! UNIX Timestamp.
+      uint32_t unix_timestamp;
+      //! Millisecond.
+      uint16_t millis;
+      //! Transmit Protocol.
+      uint8_t trans_protocol;
+      //! Transmitter ID.
+      uint32_t trans_id;
+      //! Transmitter Data.
+      uint16_t trans_data;
+      //! Signal to Noise Ratio.
+      uint8_t snr;
+      //! Transmitter Detection Frequency.
+      uint8_t trans_freq;
+      //! Receiver Memory Address.
+      uint16_t recv_mem_addr;
+
+      static uint16_t
+      getIdStatic(void)
+      {
+        return 2007;
+      }
+
+      TBRFishTag(void);
+
+      TBRFishTag*
+      clone(void) const
+      {
+        return new TBRFishTag(*this);
+      }
+
+      void
+      clear(void);
+
+      bool
+      fieldsEqual(const Message& msg__) const;
+
+      int
+      validate(void) const;
+
+      uint8_t*
+      serializeFields(uint8_t* bfr__) const;
+
+      uint16_t
+      deserializeFields(const uint8_t* bfr__, uint16_t size__);
+
+      uint16_t
+      reverseDeserializeFields(const uint8_t* bfr__, uint16_t size__);
+
+      uint16_t
+      getId(void) const
+      {
+        return TBRFishTag::getIdStatic();
+      }
+
+      const char*
+      getName(void) const
+      {
+        return "TBRFishTag";
+      }
+
+      unsigned
+      getFixedSerializationSize(void) const
+      {
+        return 21;
+      }
+
+      void
+      fieldsToJSON(std::ostream& os__, unsigned nindent__) const;
+    };
+
+    //! TBR Sensor Reading.
+    class TBRSensor: public Message
+    {
+    public:
+      //! TBR serial number.
+      uint32_t serial_no;
+      //! UNIX Timestamp.
+      uint32_t unix_timestamp;
+      //! Temperature.
+      fp32_t temperature;
+      //! Average noise level.
+      uint8_t avg_noise_level;
+      //! Peak noise level,.
+      uint8_t peak_noise_level;
+      //! Receiver listening frequency.
+      uint8_t recv_listen_freq;
+      //! Receiver Memory Address.
+      uint16_t recv_mem_addr;
+
+      static uint16_t
+      getIdStatic(void)
+      {
+        return 2008;
+      }
+
+      TBRSensor(void);
+
+      TBRSensor*
+      clone(void) const
+      {
+        return new TBRSensor(*this);
+      }
+
+      void
+      clear(void);
+
+      bool
+      fieldsEqual(const Message& msg__) const;
+
+      int
+      validate(void) const;
+
+      uint8_t*
+      serializeFields(uint8_t* bfr__) const;
+
+      uint16_t
+      deserializeFields(const uint8_t* bfr__, uint16_t size__);
+
+      uint16_t
+      reverseDeserializeFields(const uint8_t* bfr__, uint16_t size__);
+
+      uint16_t
+      getId(void) const
+      {
+        return TBRSensor::getIdStatic();
+      }
+
+      const char*
+      getName(void) const
+      {
+        return "TBRSensor";
+      }
+
+      unsigned
+      getFixedSerializationSize(void) const
+      {
+        return 17;
+      }
 
       void
       fieldsToJSON(std::ostream& os__, unsigned nindent__) const;

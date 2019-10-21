@@ -24,36 +24,99 @@
 // https://github.com/LSTS/dune/blob/master/LICENCE.md and                  *
 // http://ec.europa.eu/idabc/eupl.html.                                     *
 //***************************************************************************
-// Author: Ricardo Martins                                                  *
-//***************************************************************************
-// Automatically generated.                                                 *
-//***************************************************************************
-// IMC XML MD5: 3e9024be239f96addae90c415a6be345                            *
+// Author: Ricardo Martins (sligthly modified by Nikolai Lauvås)            *
 //***************************************************************************
 
-#ifndef DUNE_IMC_SUPERTYPES_HPP_INCLUDED_
-#define DUNE_IMC_SUPERTYPES_HPP_INCLUDED_
+#ifndef SENSORS_TBR700RT_TBRReader_HPP_INCLUDED_
+#define SENSORS_TBR700RT_TBRReader_HPP_INCLUDED_
 
 // DUNE headers.
-#include <DUNE/IMC/Message.hpp>
+#include <DUNE/DUNE.hpp>
 
-namespace DUNE
+namespace Sensors
 {
-  namespace IMC
+  namespace TBR700RT
   {
-    //! Super type Maneuver.
-    class Maneuver: public Message
-    {
-    };
+    using DUNE_NAMESPACES;
 
-    //! Super type Control Command.
-    class ControlCommand: public Message
-    {
-    };
+    //! Read buffer size.
+    static const size_t c_read_buffer_size = 4096;
+    //! Line termination character.
+    static const char c_line_term = '\r';
 
-    //! Super type RemoteData.
-    class RemoteData: public Message
+    class TBRReader: public Concurrency::Thread
     {
+    public:
+      //! Constructor.
+      //! @param[in] task parent task.
+      //! @param[in] handle I/O handle.
+      TBRReader(Tasks::Task* task, IO::Handle* handle):
+        m_task(task),
+        m_handle(handle)
+      {
+        m_buffer.resize(c_read_buffer_size);
+      }
+
+    private:
+      //! Parent task.
+      Tasks::Task* m_task;
+      //! I/O handle.
+      IO::Handle* m_handle;
+      //! Internal read buffer.
+      std::vector<char> m_buffer;
+      //! Current line.
+      std::string m_line;
+
+      void
+      dispatch(IMC::Message& msg)
+      {
+        msg.setDestination(m_task->getSystemId());
+        msg.setDestinationEntity(m_task->getEntityId());
+        m_task->dispatch(msg, DF_LOOP_BACK);
+      }
+
+      void
+      read(void)
+      {
+        if (!Poll::poll(*m_handle, 1.0))
+          return;
+
+        size_t rv = m_handle->read(&m_buffer[0], m_buffer.size());
+        if (rv == 0)
+          throw std::runtime_error(DTR("invalid read size"));
+
+        for (size_t i = 0; i < rv; ++i)
+        {
+          m_line.push_back(m_buffer[i]);
+          if (m_buffer[i] == c_line_term)
+          {
+            IMC::DevDataText line;
+            line.value = m_line;
+            dispatch(line);
+            m_line.clear();
+          }
+        }
+      }
+
+      void
+      run(void)
+      {
+        while (!isStopping())
+        {
+          try
+          {
+            read();
+          }
+          catch (std::runtime_error& e)
+          {
+            IMC::IoEvent evt;
+            evt.type = IMC::IoEvent::IOV_TYPE_INPUT_ERROR;
+            evt.error = e.what();
+            dispatch(evt);
+            break;
+          }
+        }
+      }
     };
   }
 }

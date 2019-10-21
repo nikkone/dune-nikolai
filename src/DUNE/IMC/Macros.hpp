@@ -28,7 +28,7 @@
 //***************************************************************************
 // Automatically generated.                                                 *
 //***************************************************************************
-// IMC XML MD5: 009a5046be102f40bfccc623630722a7                            *
+// IMC XML MD5: 3e9024be239f96addae90c415a6be345                            *
 //***************************************************************************
 
 #ifndef DUNE_IMC_MACROS_HPP_INCLUDED_
@@ -662,5 +662,11 @@
 #define DUNE_IMC_DMSDETECTION 908
 //! TotalMagIntensity identification number.
 #define DUNE_IMC_TOTALMAGINTENSITY 2006
+//! HomePosition identification number.
+#define DUNE_IMC_HOMEPOSITION 909
+//! TBRFishTag identification number.
+#define DUNE_IMC_TBRFISHTAG 2007
+//! TBRSensor identification number.
+#define DUNE_IMC_TBRSENSOR 2008
 
 #endif

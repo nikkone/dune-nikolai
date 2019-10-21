@@ -28,7 +28,7 @@
 //***************************************************************************
 // Automatically generated.                                                 *
 //***************************************************************************
-// IMC XML MD5: 009a5046be102f40bfccc623630722a7                            *
+// IMC XML MD5: 3e9024be239f96addae90c415a6be345                            *
 //***************************************************************************
 
 // ISO C++ 98 headers.
@@ -26945,6 +26945,290 @@ namespace DUNE
     TotalMagIntensity::fieldsToJSON(std::ostream& os__, unsigned nindent__) const
     {
       IMC::toJSON(os__, "value", value, nindent__);
+    }
+
+    HomePosition::HomePosition(void)
+    {
+      m_header.mgid = 909;
+      clear();
+    }
+
+    void
+    HomePosition::clear(void)
+    {
+      op = 0;
+      lat = 0;
+      lon = 0;
+      height = 0;
+      depth = 0;
+      alt = 0;
+    }
+
+    bool
+    HomePosition::fieldsEqual(const Message& msg__) const
+    {
+      const IMC::HomePosition& other__ = static_cast<const HomePosition&>(msg__);
+      if (op != other__.op) return false;
+      if (lat != other__.lat) return false;
+      if (lon != other__.lon) return false;
+      if (height != other__.height) return false;
+      if (depth != other__.depth) return false;
+      if (alt != other__.alt) return false;
+      return true;
+    }
+
+    int
+    HomePosition::validate(void) const
+    {
+      if (lat < -1.5707963267948966 || lat > 1.5707963267948966) return false;
+      if (lon < -3.141592653589793 || lon > 3.141592653589793) return false;
+      return true;
+    }
+
+    uint8_t*
+    HomePosition::serializeFields(uint8_t* bfr__) const
+    {
+      uint8_t* ptr__ = bfr__;
+      ptr__ += IMC::serialize(op, ptr__);
+      ptr__ += IMC::serialize(lat, ptr__);
+      ptr__ += IMC::serialize(lon, ptr__);
+      ptr__ += IMC::serialize(height, ptr__);
+      ptr__ += IMC::serialize(depth, ptr__);
+      ptr__ += IMC::serialize(alt, ptr__);
+      return ptr__;
+    }
+
+    uint16_t
+    HomePosition::deserializeFields(const uint8_t* bfr__, uint16_t size__)
+    {
+      const uint8_t* start__ = bfr__;
+      bfr__ += IMC::deserialize(op, bfr__, size__);
+      bfr__ += IMC::deserialize(lat, bfr__, size__);
+      bfr__ += IMC::deserialize(lon, bfr__, size__);
+      bfr__ += IMC::deserialize(height, bfr__, size__);
+      bfr__ += IMC::deserialize(depth, bfr__, size__);
+      bfr__ += IMC::deserialize(alt, bfr__, size__);
+      return bfr__ - start__;
+    }
+
+    uint16_t
+    HomePosition::reverseDeserializeFields(const uint8_t* bfr__, uint16_t size__)
+    {
+      const uint8_t* start__ = bfr__;
+      bfr__ += IMC::deserialize(op, bfr__, size__);
+      bfr__ += IMC::reverseDeserialize(lat, bfr__, size__);
+      bfr__ += IMC::reverseDeserialize(lon, bfr__, size__);
+      bfr__ += IMC::reverseDeserialize(height, bfr__, size__);
+      bfr__ += IMC::reverseDeserialize(depth, bfr__, size__);
+      bfr__ += IMC::reverseDeserialize(alt, bfr__, size__);
+      return bfr__ - start__;
+    }
+
+    void
+    HomePosition::fieldsToJSON(std::ostream& os__, unsigned nindent__) const
+    {
+      IMC::toJSON(os__, "op", op, nindent__);
+      IMC::toJSON(os__, "lat", lat, nindent__);
+      IMC::toJSON(os__, "lon", lon, nindent__);
+      IMC::toJSON(os__, "height", height, nindent__);
+      IMC::toJSON(os__, "depth", depth, nindent__);
+      IMC::toJSON(os__, "alt", alt, nindent__);
+    }
+
+    TBRFishTag::TBRFishTag(void)
+    {
+      m_header.mgid = 2007;
+      clear();
+    }
+
+    void
+    TBRFishTag::clear(void)
+    {
+      serial_no = 0;
+      unix_timestamp = 0;
+      millis = 0;
+      trans_protocol = 0;
+      trans_id = 0;
+      trans_data = 0;
+      snr = 0;
+      trans_freq = 0;
+      recv_mem_addr = 0;
+    }
+
+    bool
+    TBRFishTag::fieldsEqual(const Message& msg__) const
+    {
+      const IMC::TBRFishTag& other__ = static_cast<const TBRFishTag&>(msg__);
+      if (serial_no != other__.serial_no) return false;
+      if (unix_timestamp != other__.unix_timestamp) return false;
+      if (millis != other__.millis) return false;
+      if (trans_protocol != other__.trans_protocol) return false;
+      if (trans_id != other__.trans_id) return false;
+      if (trans_data != other__.trans_data) return false;
+      if (snr != other__.snr) return false;
+      if (trans_freq != other__.trans_freq) return false;
+      if (recv_mem_addr != other__.recv_mem_addr) return false;
+      return true;
+    }
+
+    int
+    TBRFishTag::validate(void) const
+    {
+      return true;
+    }
+
+    uint8_t*
+    TBRFishTag::serializeFields(uint8_t* bfr__) const
+    {
+      uint8_t* ptr__ = bfr__;
+      ptr__ += IMC::serialize(serial_no, ptr__);
+      ptr__ += IMC::serialize(unix_timestamp, ptr__);
+      ptr__ += IMC::serialize(millis, ptr__);
+      ptr__ += IMC::serialize(trans_protocol, ptr__);
+      ptr__ += IMC::serialize(trans_id, ptr__);
+      ptr__ += IMC::serialize(trans_data, ptr__);
+      ptr__ += IMC::serialize(snr, ptr__);
+      ptr__ += IMC::serialize(trans_freq, ptr__);
+      ptr__ += IMC::serialize(recv_mem_addr, ptr__);
+      return ptr__;
+    }
+
+    uint16_t
+    TBRFishTag::deserializeFields(const uint8_t* bfr__, uint16_t size__)
+    {
+      const uint8_t* start__ = bfr__;
+      bfr__ += IMC::deserialize(serial_no, bfr__, size__);
+      bfr__ += IMC::deserialize(unix_timestamp, bfr__, size__);
+      bfr__ += IMC::deserialize(millis, bfr__, size__);
+      bfr__ += IMC::deserialize(trans_protocol, bfr__, size__);
+      bfr__ += IMC::deserialize(trans_id, bfr__, size__);
+      bfr__ += IMC::deserialize(trans_data, bfr__, size__);
+      bfr__ += IMC::deserialize(snr, bfr__, size__);
+      bfr__ += IMC::deserialize(trans_freq, bfr__, size__);
+      bfr__ += IMC::deserialize(recv_mem_addr, bfr__, size__);
+      return bfr__ - start__;
+    }
+
+    uint16_t
+    TBRFishTag::reverseDeserializeFields(const uint8_t* bfr__, uint16_t size__)
+    {
+      const uint8_t* start__ = bfr__;
+      bfr__ += IMC::reverseDeserialize(serial_no, bfr__, size__);
+      bfr__ += IMC::reverseDeserialize(unix_timestamp, bfr__, size__);
+      bfr__ += IMC::reverseDeserialize(millis, bfr__, size__);
+      bfr__ += IMC::deserialize(trans_protocol, bfr__, size__);
+      bfr__ += IMC::reverseDeserialize(trans_id, bfr__, size__);
+      bfr__ += IMC::reverseDeserialize(trans_data, bfr__, size__);
+      bfr__ += IMC::deserialize(snr, bfr__, size__);
+      bfr__ += IMC::deserialize(trans_freq, bfr__, size__);
+      bfr__ += IMC::reverseDeserialize(recv_mem_addr, bfr__, size__);
+      return bfr__ - start__;
+    }
+
+    void
+    TBRFishTag::fieldsToJSON(std::ostream& os__, unsigned nindent__) const
+    {
+      IMC::toJSON(os__, "serial_no", serial_no, nindent__);
+      IMC::toJSON(os__, "unix_timestamp", unix_timestamp, nindent__);
+      IMC::toJSON(os__, "millis", millis, nindent__);
+      IMC::toJSON(os__, "trans_protocol", trans_protocol, nindent__);
+      IMC::toJSON(os__, "trans_id", trans_id, nindent__);
+      IMC::toJSON(os__, "trans_data", trans_data, nindent__);
+      IMC::toJSON(os__, "snr", snr, nindent__);
+      IMC::toJSON(os__, "trans_freq", trans_freq, nindent__);
+      IMC::toJSON(os__, "recv_mem_addr", recv_mem_addr, nindent__);
+    }
+
+    TBRSensor::TBRSensor(void)
+    {
+      m_header.mgid = 2008;
+      clear();
+    }
+
+    void
+    TBRSensor::clear(void)
+    {
+      serial_no = 0;
+      unix_timestamp = 0;
+      temperature = 0;
+      avg_noise_level = 0;
+      peak_noise_level = 0;
+      recv_listen_freq = 0;
+      recv_mem_addr = 0;
+    }
+
+    bool
+    TBRSensor::fieldsEqual(const Message& msg__) const
+    {
+      const IMC::TBRSensor& other__ = static_cast<const TBRSensor&>(msg__);
+      if (serial_no != other__.serial_no) return false;
+      if (unix_timestamp != other__.unix_timestamp) return false;
+      if (temperature != other__.temperature) return false;
+      if (avg_noise_level != other__.avg_noise_level) return false;
+      if (peak_noise_level != other__.peak_noise_level) return false;
+      if (recv_listen_freq != other__.recv_listen_freq) return false;
+      if (recv_mem_addr != other__.recv_mem_addr) return false;
+      return true;
+    }
+
+    int
+    TBRSensor::validate(void) const
+    {
+      return true;
+    }
+
+    uint8_t*
+    TBRSensor::serializeFields(uint8_t* bfr__) const
+    {
+      uint8_t* ptr__ = bfr__;
+      ptr__ += IMC::serialize(serial_no, ptr__);
+      ptr__ += IMC::serialize(unix_timestamp, ptr__);
+      ptr__ += IMC::serialize(temperature, ptr__);
+      ptr__ += IMC::serialize(avg_noise_level, ptr__);
+      ptr__ += IMC::serialize(peak_noise_level, ptr__);
+      ptr__ += IMC::serialize(recv_listen_freq, ptr__);
+      ptr__ += IMC::serialize(recv_mem_addr, ptr__);
+      return ptr__;
+    }
+
+    uint16_t
+    TBRSensor::deserializeFields(const uint8_t* bfr__, uint16_t size__)
+    {
+      const uint8_t* start__ = bfr__;
+      bfr__ += IMC::deserialize(serial_no, bfr__, size__);
+      bfr__ += IMC::deserialize(unix_timestamp, bfr__, size__);
+      bfr__ += IMC::deserialize(temperature, bfr__, size__);
+      bfr__ += IMC::deserialize(avg_noise_level, bfr__, size__);
+      bfr__ += IMC::deserialize(peak_noise_level, bfr__, size__);
+      bfr__ += IMC::deserialize(recv_listen_freq, bfr__, size__);
+      bfr__ += IMC::deserialize(recv_mem_addr, bfr__, size__);
+      return bfr__ - start__;
+    }
+
+    uint16_t
+    TBRSensor::reverseDeserializeFields(const uint8_t* bfr__, uint16_t size__)
+    {
+      const uint8_t* start__ = bfr__;
+      bfr__ += IMC::reverseDeserialize(serial_no, bfr__, size__);
+      bfr__ += IMC::reverseDeserialize(unix_timestamp, bfr__, size__);
+      bfr__ += IMC::reverseDeserialize(temperature, bfr__, size__);
+      bfr__ += IMC::deserialize(avg_noise_level, bfr__, size__);
+      bfr__ += IMC::deserialize(peak_noise_level, bfr__, size__);
+      bfr__ += IMC::deserialize(recv_listen_freq, bfr__, size__);
+      bfr__ += IMC::reverseDeserialize(recv_mem_addr, bfr__, size__);
+      return bfr__ - start__;
+    }
+
+    void
+    TBRSensor::fieldsToJSON(std::ostream& os__, unsigned nindent__) const
+    {
+      IMC::toJSON(os__, "serial_no", serial_no, nindent__);
+      IMC::toJSON(os__, "unix_timestamp", unix_timestamp, nindent__);
+      IMC::toJSON(os__, "temperature", temperature, nindent__);
+      IMC::toJSON(os__, "avg_noise_level", avg_noise_level, nindent__);
+      IMC::toJSON(os__, "peak_noise_level", peak_noise_level, nindent__);
+      IMC::toJSON(os__, "recv_listen_freq", recv_listen_freq, nindent__);
+      IMC::toJSON(os__, "recv_mem_addr", recv_mem_addr, nindent__);
     }
   }
 }
