@@ -289,19 +289,80 @@ namespace Sensors
           if (sum == 10) sum = 0;
           return sum;
       }
+
+/*
+      void send_sync_msg(int32_t timestamp){
+        spew(DTR("time: %i"), timestamp);
+        uint8_t counter;
+        uint8_t digit;
+        uint8_t timestamp_array[9];
+        uint8_t luhn_key;
+        timestamp=timestamp/10; //last number is always zero, so it should not be sent
+        for(counter=9; counter>=1;counter--){
+          digit=timestamp%10;
+          timestamp=timestamp/10;
+          timestamp_array[counter-1]=digit;
+        }
+        std::string out = "";
+        for(counter=0;counter<9;counter++){
+          out += char((timestamp_array[counter])+'0');
+        }
+        luhn_key=create_luhn_number(timestamp_array);
+        out += char(luhn_key+'0');
+        spew(DTR("Sendsync: %s"), out.c_str());
+      }
+
+      uint8_t create_luhn_number(uint8_t timestamp_array2[]){
+        uint32_t rx_timestamp = 0;
+        uint8_t i = 0;
+        uint32_t luhn_sum=0;
+        for(i=0;i<9;i++){
+          if(i%2==0){
+            timestamp_array2[i]+=timestamp_array2[i];
+          }
+          if(timestamp_array2[i]>=10){
+            luhn_sum+=timestamp_array2[i]%10+1;
+          }
+          else
+            luhn_sum+=timestamp_array2[i];
+        }
+        char luhn_key=(luhn_sum*9)%10;
+        
+        return luhn_key;
+      }
+
+        //
+        //uint8_t l2 = create_luhn_number((uint8_t*)UTCUnixTimestamp.c_str());
+        //spew(DTR("Send: %u"), l2);
+        #include <time.h>
+        send_sync_msg((unsigned)time(NULL));
+        //
+        
+*/
       void sendTbrClockSync() {
+        // Get system clock
         std::stringstream ss;
         ss << std::time(0);
         std::string UTCUnixTimestamp = ss.str();
+
         // Remove last digit
-        UTCUnixTimestamp = UTCUnixTimestamp.substr(0,UTCUnixTimestamp.length()-1); 
+        UTCUnixTimestamp = UTCUnixTimestamp.substr(0,UTCUnixTimestamp.length()-1);
+
         // Add Luhn verification number
         UTCUnixTimestamp += std::to_string(calcLuhnVerifDigit(UTCUnixTimestamp.c_str()));
+
         // Add preamble
         std::string cmd = "(+)" + UTCUnixTimestamp;
+
+        // Send sync signal slowly, because TBR700RT can't handle the speed(max 1 char per microsecond)
+        char a[1] = {'0'};
+        for(char& c : cmd) {
+            a[0] = c;
+            m_handle->write(a, 1);
+            Delay::waitMsec(1);
+        }
+
         spew(DTR("Send: %s"), cmd.c_str());
-        m_handle->writeString(cmd.c_str());
-        m_handle->flushOutput();
       }
 
       //! Read decimal from input string.
@@ -352,25 +413,32 @@ namespace Sensors
       processSentence(const std::string& line)
       {
         spew(DTR("Process"));
-        // Discard leading noise.
-        size_t sidx = 0;
-        for (sidx = 0; sidx < line.size(); ++sidx)
-        {
-          if (line[sidx] == '$')
-            break;
-        }
+        if (line.find("ack01") != std::string::npos) {
+          spew(DTR("Sensor clock diciplined"));
+        } if(line.find("ack02") != std::string::npos) {
+          spew(DTR("Sensor timestamp set"));
+        } if (line.find("$") != std::string::npos) {
 
-        // Split sentence
-        std::vector<std::string> parts;
-        try {
-          String::split(line.substr(sidx + 1, line.size()), ",", parts);
-        } catch(const std::exception& ex) {
-          err(DTR("Invalid argument: %s"), ex.what());
-          return;
-        }
-        
+          // Discard leading noise.
+          size_t sidx = 0;
+          for (sidx = 0; sidx < line.size(); ++sidx)
+          {
+            if (line[sidx] == '$')
+              break;
+          }
 
-        interpretSentence(parts);
+          // Split sentence
+          std::vector<std::string> parts;
+          try {
+            spew(DTR("try"));
+            String::split(line.substr(sidx + 1, line.size()), ",", parts);
+          } catch(const std::exception& ex) {
+            err(DTR("Invalid argument: %s"), ex.what());
+            return;
+          }
+
+          interpretSentence(parts);
+        }
       }
 
       //! Interpret given sentence.
@@ -378,11 +446,12 @@ namespace Sensors
       void
       interpretSentence(std::vector<std::string>& parts)
       {
-        if (parts[0] == m_args.stn_order.front())
+        spew(DTR("Interpret"));
+        /*if (parts[0] == m_args.stn_order.front())
         {
           // Test if all sentences received, TODO, can probably be removed
-        }
-
+        }*/
+        
         if(parts.size() >= 3) {
           if(parts[2]  == "TBR Sensor") {
             interpretSensorReading(parts);
@@ -561,7 +630,8 @@ namespace Sensors
       {
         while (!stopping())
         {
-          waitForMessages(1.0);
+          waitForMessages(10.0);
+          //sendTbrClockSync();
         }
       }
     };
