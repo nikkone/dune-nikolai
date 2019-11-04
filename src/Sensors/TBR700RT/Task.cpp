@@ -31,6 +31,9 @@
 #include <cstring>
 #include <algorithm>
 #include <cstddef>
+#include <ctime>
+#include <string>
+#include <sstream>
 
 // DUNE headers.
 #include <DUNE/DUNE.hpp>
@@ -264,10 +267,6 @@ namespace Sensors
         return false;
       }
 
-
-      #include <ctime> // TODO MOOOOOOOOOVe
-        #include <string>
-        #include <sstream>
       int calcLuhnVerifDigit(const char *number)
       {
           int i, sum, ch, num, twoup, len;
@@ -290,57 +289,8 @@ namespace Sensors
           return sum;
       }
 
-/*
-      void send_sync_msg(int32_t timestamp){
-        spew(DTR("time: %i"), timestamp);
-        uint8_t counter;
-        uint8_t digit;
-        uint8_t timestamp_array[9];
-        uint8_t luhn_key;
-        timestamp=timestamp/10; //last number is always zero, so it should not be sent
-        for(counter=9; counter>=1;counter--){
-          digit=timestamp%10;
-          timestamp=timestamp/10;
-          timestamp_array[counter-1]=digit;
-        }
-        std::string out = "";
-        for(counter=0;counter<9;counter++){
-          out += char((timestamp_array[counter])+'0');
-        }
-        luhn_key=create_luhn_number(timestamp_array);
-        out += char(luhn_key+'0');
-        spew(DTR("Sendsync: %s"), out.c_str());
-      }
-
-      uint8_t create_luhn_number(uint8_t timestamp_array2[]){
-        uint32_t rx_timestamp = 0;
-        uint8_t i = 0;
-        uint32_t luhn_sum=0;
-        for(i=0;i<9;i++){
-          if(i%2==0){
-            timestamp_array2[i]+=timestamp_array2[i];
-          }
-          if(timestamp_array2[i]>=10){
-            luhn_sum+=timestamp_array2[i]%10+1;
-          }
-          else
-            luhn_sum+=timestamp_array2[i];
-        }
-        char luhn_key=(luhn_sum*9)%10;
-        
-        return luhn_key;
-      }
-
-        //
-        //uint8_t l2 = create_luhn_number((uint8_t*)UTCUnixTimestamp.c_str());
-        //spew(DTR("Send: %u"), l2);
-        #include <time.h>
-        send_sync_msg((unsigned)time(NULL));
-        //
-        
-*/
       void sendTbrClockSync() {
-        // Get system clock
+        // Get timestamp from system clock
         std::stringstream ss;
         ss << std::time(0);
         std::string UTCUnixTimestamp = ss.str();
@@ -363,32 +313,6 @@ namespace Sensors
         }
 
         spew(DTR("Send: %s"), cmd.c_str());
-      }
-
-      //! Read decimal from input string.
-      //! @param[in] str input string.
-      //! @param[out] dst decimal.
-      //! @return true if successful, false otherwise.
-      template <typename T>
-      bool
-      readDecimal(const std::string& str, T& dst)
-      {
-        unsigned idx = 0;
-        while (str[idx] == '0')
-          ++idx;
-
-        return castLexical(std::string(str, idx), dst);
-      }
-
-      //! Read number from input string.
-      //! @param[in] str input string.
-      //! @param[out] dst number.
-      //! @return true if successful, false otherwise.
-      template <typename T>
-      bool
-      readNumber(const std::string& str, T& dst)
-      {
-        return castLexical(str, dst);
       }
 
       //! Read int from input string.
@@ -630,7 +554,7 @@ namespace Sensors
       {
         while (!stopping())
         {
-          waitForMessages(10.0);
+          waitForMessages(1.0);
           //sendTbrClockSync();
         }
       }
