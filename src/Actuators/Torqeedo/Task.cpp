@@ -47,7 +47,7 @@ namespace Actuators
     using DUNE_NAMESPACES;
     //! Maximum number of batteries connected to the Torqeedo board
     static const unsigned c_num_batteries = 4;
-    //! Number of power lines
+    //! Number of power channels
     static const unsigned c_pwrs_count = 10;
     //! Number of power rails
     static const unsigned c_pwr_rails_count = 4;
@@ -601,12 +601,11 @@ namespace Actuators
             spew(DTR("Motor send: %d, %d"), motor0_throttle, motor1_throttle);
             sendSetMotorThrottle(motor0_throttle, motor1_throttle);
             motor_send_counter = 0;
-          } else {
-            readCanMessage();
-          }
-          if(m_unsent_power_parameters) {
+          } else if(m_unsent_power_parameters) {
             sendPowerChannelMessages();
             m_unsent_power_parameters = false;
+          } else {
+            readCanMessage();
           }
         }
       }

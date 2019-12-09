@@ -33,9 +33,10 @@
 
 namespace Safety
 {
-  //! Insert short task description here.
+  //! This task is used with the watchdog feature of the StratoPi CAN expansion board for the Raspberry Pi.
   //!
-  //! Insert explanation on task behaviour here.
+  //! The task activates the watchdog when it's activated. 
+  //! The task is periodic, and toggles the heartbeat pin once for every time it executes. 
   //! @author Nikolai Lauvås
   namespace StratoPIWatchdog
   {
@@ -122,6 +123,7 @@ namespace Safety
         Memory::clear(m_gpio_heartbeat_pin);
         Memory::clear(m_gpio_activation_pin);
         Memory::clear(m_gpio_watchdog_timeout_pin);
+        Memory::clear(m_gpio_watchdog_timeout_answer_pin);
       }
 
       //! Main loop.
